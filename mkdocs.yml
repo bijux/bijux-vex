@@ -1,0 +1,126 @@
+site_name: bijux VEX
+site_url: https://bijux.github.io/bijux-vex/
+repo_name: bijux/bijux-vex
+repo_url: https://github.com/bijux/bijux-vex
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - search.highlight
+    - content.code.copy
+    - navigation.footer
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+  logo: assets/bijux_logo_hq.png
+  favicon: assets/bijux_icon.png
+
+nav:
+  - Home: index.md
+  - User:
+      - Start Here: user/start_here.md
+      - Not a Vector DB: user/not_a_vdb.md
+      - Misuse Patterns: user/misuse.md
+      - External Misuse: user/external_misuse.md
+  - Concepts:
+      - Conceptual Overview: overview/concepts.md
+  - Reference:
+      - Read This First: spec/read_this_first.md
+      - System Contract: spec/system_contract.md
+      - Mental Model: spec/mental_model.md
+      - Identity: spec/identity.md
+      - Refusals: spec/refusals.md
+      - Vocabulary: spec/vocabulary.md
+      - Execution Contracts: spec/execution_contracts.md
+      - Execution Intent Matrix: spec/execution_intent_matrix.md
+      - Failure Semantics: spec/failure_semantics.md
+      - Non-Deterministic Execution: spec/non_deterministic_execution.md
+      - Invariant IDs: spec/invariant_ids.md
+      - Execution Lifecycle: spec/execution_lifecycle.md
+      - Execution Artifacts: spec/execution_artifacts.md
+      - Invariants Overview: spec/invariants_overview.md
+      - Doc-to-Code Map: spec/doc_to_code_map.md
+      - Irreducible Core: spec/irreducible_core.md
+      - Architecture Diagram: spec/architecture_diagram.md
+  - Design:
+      - Scope: design/scope.md
+      - Non-Goals: design/non_goals.md
+      - Glossary: design/glossary.md
+      - Determinism: design/determinism.md
+      - Contracts: design/contracts.md
+      - Execution Contracts (Design): design/execution_contracts.md
+      - Why Vector Execution: design/why_vector_execution.md
+      - VDB Comparison: design/vdb_comparison.md
+      - VDB Profile: spec/vdb_profile.md
+      - Rejected Alternatives: design/rejected_alternatives.md
+  - API:
+      - Overview: api/index.md
+      - CLI Exit Codes: api/cli_exit_codes.md
+      - Examples (normative): api/examples.md
+      - Errors: api/errors.md
+      - OpenAPI v1: api/openapi.md
+  - Examples:
+      - Overview: examples/overview.md
+      - ND Reproducibility Experiment: examples/nd_reproducibility.md
+      - Canonical Walkthrough: examples/canonical.md
+      - Exact Execution: spec/examples/exact_execution.md
+      - ANN Execution: spec/examples/ann_execution.md
+      - Deterministic Replay: spec/examples/deterministic_replay.md
+      - ND Execution with Audit: spec/examples/nd_execution_with_audit.md
+      - Forcing Case: spec/examples/forcing_case.md
+      - Limitations and Failure Modes: spec/examples/ugly_truth.md
+      - Failure Narrative: spec/failure_narratives/budget_exhaustion.md
+      - Contract Violation: examples/contract_violation.md
+      - Audit Narrative: examples/audit_narrative.md
+  - Maintainer:
+      - Changelog: changelog.md
+      - Release Process: maintainer/release_process.md
+      - Release Checklist: maintainer/release_checklist.md
+      - Release Dry Run: maintainer/release_dry_run.md
+      - Docs Freeze Checklist: maintainer/docs_freeze_checklist.md
+      - Design Diary: maintainer/design_diary.md
+      - Makefile Contract: maintainer/makefile_contract.md
+      - Testing Policy: maintainer/testing_policy.md
+      - Compatibility Breaks: maintainer/compatibility_breaks.md
+      - Debt Log: maintainer/debt_log.md
+      - Deletion Policy: maintainer/deletion_policy.md
+      - Extension Points: maintainer/extension_points.md
+      - Extension Policy: maintainer/extension_policy.md
+      - Security Model: maintainer/security_model.md
+      - Do Not Optimize: maintainer/do_not_optimize.md
+      - If I Disappear: maintainer/if_i_disappear.md
+      - Freeze Criteria: maintainer/freeze_criteria.md
+      - Maintenance Mode Criteria: maintainer/maintenance_mode_criteria.md
+      - Design Challenges: maintainer/why_this_is_hard.md
+      - Philosophy: maintainer/rationale/philosophy.md
+      - Anti-Goals: maintainer/rationale/anti_goals.md
+  - Legal:
+      - Licensing: legal/licensing.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - tables
+  - def_list
+
+plugins:
+  - search
+  - include-markdown:
+      recursive: false
+      heading_offset: 0

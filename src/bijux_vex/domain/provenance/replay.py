@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: MIT
+# Copyright © 2025 Bijan Mousavi
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import dataclass
+
+from bijux_vex.contracts.resources import ExecutionResources
+from bijux_vex.core.canon import canon
+from bijux_vex.core.contracts.execution_contract import ExecutionContract
+from bijux_vex.core.errors import InvariantError
+from bijux_vex.core.identity.ids import fingerprint
+from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
+from bijux_vex.domain.execution_requests.execute import (
+    execute_request,
+    start_execution_session,
+)
+from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
+
+
+@dataclass(frozen=True)
+class ReplayOutcome:
+    execution_contract: ExecutionContract
+    execution_id: str
+    original_fingerprint: str
+    replay_fingerprint: str
+    results: tuple[Result, ...]
+    details: dict[str, str]
+    nondeterministic_sources: tuple[str, ...] = ()
+
+    @property
+    def matches(self) -> bool:
+        return self.original_fingerprint == self.replay_fingerprint
+
+
+def _results_fingerprint(results: Iterable[Result]) -> str:
+    payload = [canon(r).decode("utf-8") for r in results]
+    return fingerprint(payload)
+
+
+def replay(
+    request: ExecutionRequest,
+    artifact: ExecutionArtifact,
+    resources: ExecutionResources,
+    ann_runner: AnnExecutionRequestRunner | None = None,
+    baseline_fingerprint: str | None = None,
+) -> ReplayOutcome:
+    if request.execution_contract is not artifact.execution_contract:
+        raise InvariantError(
+            message="Execution contract does not match artifact execution contract",
+            invariant_id="INV-010",
+        )
+    stored = resources.ledger.latest_execution_result(artifact.artifact_id)
+    if stored is None:
+        raise InvariantError(
+            message="Replay requires existing provenance for artifact",
+            invariant_id="INV-040",
+        )
+    nondeterministic_sources: tuple[str, ...] = ()
+    original_fp = baseline_fingerprint or _results_fingerprint(stored.results)
+    if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+        nondeterministic_sources = stored.plan.randomness_labels()
+        if not nondeterministic_sources:
+            raise InvariantError(
+                message="Non-deterministic replay missing randomness annotations",
+                invariant_id="INV-041",
+            )
+        session = start_execution_session(
+            artifact,
+            request,
+            resources,
+            ann_runner=ann_runner,
+        )
+        fresh_execution, _ = execute_request(
+            session,
+            resources,
+            ann_runner=ann_runner,
+        )
+        results = fresh_execution.results
+        replay_fp = _results_fingerprint(results)
+    else:
+        if baseline_fingerprint is None:
+            results = stored.results
+            replay_fp = original_fp
+        else:
+            session = start_execution_session(
+                artifact,
+                request,
+                resources,
+                ann_runner=ann_runner,
+            )
+            fresh_execution, _ = execute_request(
+                session,
+                resources,
+                ann_runner=ann_runner,
+            )
+            results = fresh_execution.results
+            replay_fp = _results_fingerprint(results)
+    details: dict[str, str] = {}
+    if nondeterministic_sources:
+        details["execution_contract"] = artifact.execution_contract.value
+        details["replayability"] = "divergence allowed under non_deterministic contract"
+        details["randomness_sources"] = ",".join(nondeterministic_sources)
+    if original_fp != replay_fp:
+        details["results_fingerprint"] = f"{original_fp} != {replay_fp}"
+        details["replay_semantics"] = (
+            "nondeterministic_divergence"
+            if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            else "deterministic_mismatch"
+        )
+    return ReplayOutcome(
+        execution_contract=artifact.execution_contract,
+        execution_id=stored.execution_id,
+        original_fingerprint=original_fp,
+        replay_fingerprint=replay_fp,
+        results=results,
+        details=details,
+        nondeterministic_sources=nondeterministic_sources,
+    )
