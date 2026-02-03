@@ -45,6 +45,23 @@ class ConflictError(BijuxError):
     """State conflict such as duplicate insert or version mismatch."""
 
 
+# Operational errors
+class ConfigurationError(BijuxError):
+    """Configuration is invalid or incomplete."""
+
+
+class DeterminismViolationError(BijuxError):
+    """Determinism contract cannot be honored."""
+
+
+class BackendUnavailableError(BijuxError):
+    """Backend is unavailable or locked."""
+
+
+class CorruptArtifactError(BijuxError):
+    """Stored artifact or index is corrupted or incompatible."""
+
+
 # Contract errors
 class AtomicityViolationError(BijuxError):
     """A transactional boundary was broken."""
@@ -126,6 +143,10 @@ __all__ = [
     "InvariantError",
     "NotFoundError",
     "ConflictError",
+    "ConfigurationError",
+    "DeterminismViolationError",
+    "BackendUnavailableError",
+    "CorruptArtifactError",
     "AtomicityViolationError",
     "AuthzDeniedError",
     "BackendDivergenceError",
