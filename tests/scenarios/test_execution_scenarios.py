@@ -163,6 +163,8 @@ def test_budget_exhaustion_mid_plan():
     session = start_execution_session(artifact, req, backend.stores, ann_runner=ann)
     execution_result, _ = execute_request(session, backend.stores, ann_runner=ann)
     assert execution_result.status.name == "PARTIAL"
+    assert execution_result.failure_reason is not None
+    assert execution_result.failure_reason.startswith("budget_exhausted")
 
 
 def test_ann_fallback_forced():

@@ -37,6 +37,7 @@ def collect_results(
     failure_reason: str | None = None
     approximation: ApproximationReport | None = None
     try:
+        _preflight_budget(session.budget)
         results_iter = run_plan(
             session.plan,
             session.execution,
@@ -79,6 +80,19 @@ def collect_results(
                 session.request.nd_settings.outlier_threshold,
                 session.request.nd_settings.adaptive_k,
             )
+            if (
+                session.request.nd_settings.low_signal_margin is not None
+                and results_buffer
+            ):
+                from bijux_vex.domain.execution_requests.nd_quality import (
+                    compute_distance_margin,
+                )
+
+                margin = compute_distance_margin(results_buffer)
+                if margin < float(session.request.nd_settings.low_signal_margin):
+                    low_signal = True
+                    if not degraded:
+                        failure_reason = "nd_low_signal_margin"
             if degraded:
                 status = ExecutionStatus.PARTIAL
                 failure_reason = "nd_adaptive_k"
@@ -89,13 +103,14 @@ def collect_results(
                     requested_k=session.request.top_k,
                 )
             if low_signal:
+                signal_reason = failure_reason or "nd_low_signal"
                 if session.request.nd_settings.low_signal_refuse:
                     results_buffer = []
                     status = ExecutionStatus.FAILED
                     failure_reason = "nd_low_signal_refused"
                     log_event(
                         "nd_low_signal_refused",
-                        reason="outlier_threshold",
+                        reason=signal_reason,
                         requested_k=session.request.top_k,
                     )
                 else:
@@ -103,7 +118,7 @@ def collect_results(
                     failure_reason = "nd_no_confident_neighbors"
                     log_event(
                         "nd_low_signal",
-                        reason="outlier_threshold",
+                        reason=signal_reason,
                         returned_k=len(results_buffer),
                         requested_k=session.request.top_k,
                     )
@@ -149,6 +164,44 @@ def collect_results(
         else:
             raise
     return results_buffer, status, failure_reason, approximation
+
+
+def _preflight_budget(budget: dict[str, int | float] | None) -> None:
+    if not budget:
+        return
+    if budget.get("max_vectors") is not None and int(budget["max_vectors"]) <= 0:
+        raise BudgetExceededError(
+            message="max vectors budget exhausted",
+            dimension="vectors",
+            partial_results=(),
+        )
+    if (
+        budget.get("max_distance_computations") is not None
+        and int(budget["max_distance_computations"]) <= 0
+    ):
+        raise BudgetExceededError(
+            message="distance budget exhausted",
+            dimension="distance",
+            partial_results=(),
+        )
+    if budget.get("max_ann_probes") is not None and int(budget["max_ann_probes"]) <= 0:
+        raise BudgetExceededError(
+            message="ANN probes budget exhausted",
+            dimension="ann_probes",
+            partial_results=(),
+        )
+    if budget.get("max_latency_ms") is not None and int(budget["max_latency_ms"]) <= 0:
+        raise BudgetExceededError(
+            message="latency budget exhausted",
+            dimension="latency",
+            partial_results=(),
+        )
+    if budget.get("max_memory_mb") is not None and int(budget["max_memory_mb"]) <= 0:
+        raise BudgetExceededError(
+            message="memory budget exhausted",
+            dimension="memory",
+            partial_results=(),
+        )
 
 
 def _budget_failure_reason(exc: Exception) -> str | None:

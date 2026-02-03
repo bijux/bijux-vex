@@ -10,7 +10,7 @@ from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import BudgetExceededError
 from dataclasses import replace
 
-from bijux_vex.core.types import ExecutionBudget, ExecutionRequest
+from bijux_vex.core.types import ExecutionBudget, ExecutionRequest, NDSettings
 from bijux_vex.domain.execution_requests.execute import (
     execute_request,
     start_execution_session,
@@ -43,6 +43,7 @@ def test_latency_budget_enforced_under_load():
             max_vectors=0,
             max_ann_probes=1,
         ),
+        nd_settings=NDSettings(build_on_demand=True),
     )
     with backend.tx_factory() as tx:
         backend.stores.ledger.put_artifact(tx, artifact)
