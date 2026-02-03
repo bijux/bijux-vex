@@ -1,6 +1,35 @@
-# Provenance as an Audit Artifact
+# Provenance as an Audit Narrative
 
-Provenance is the audit trail of a vector execution. It explains **what happened**, **why it happened**, and **what was refused**.
+## Why this exists
+
+When something goes wrong, “the system said so” is not an explanation. Provenance tells you **what happened**, **why it happened**, and **what was refused** so you can defend your results.
+
+Without provenance, incidents become guesswork. With it, you have evidence.
+
+## Story / scenario
+
+A customer asks why results changed between two runs. Provenance shows the exact index hash, configuration, and randomness declaration that changed.
+
+## What usually goes wrong
+
+- Provenance is treated as optional logging.
+- Results are stored without the plan that produced them.
+
+## How Bijux-Vex handles it
+
+Provenance is emitted for every execution and includes the decisions and artifacts needed to audit results.
+
+## What trade-offs remain
+
+- Provenance adds storage overhead.
+- Some details require careful redaction.
+
+## Where to go deeper
+
+- `docs/user/failure_modes_safety.md`
+- `docs/user/deterministic_replay.md`
+
+---
 
 Structure
 
@@ -28,3 +57,9 @@ How provenance answers “why did this happen?”
 
 - It records the exact plan and parameters used.
 - It shows whether any degradation or refusal occurred.
+
+## Common misunderstandings
+
+- “Provenance is just logs.” It is structured, queryable evidence.
+- “Provenance is optional.” It is a core contract.
+- “It’s too verbose to use.” Summaries can be stored while full data is retained.

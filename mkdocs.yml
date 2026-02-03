@@ -34,6 +34,7 @@ nav:
   - User:
       - Start Here: user/start_here.md
       - What It Is: user/what_is_bijux_vex.md
+      - If You Only Read One Page: user/only_read_one_page.md
       - Reading Order: user/reading_order.md
       - Tutorial: user/tutorial.md
       - Workflows: user/workflows.md
@@ -45,21 +46,32 @@ nav:
       - Not a Vector DB: user/not_a_vdb.md
       - BYO vs Embeddings: user/byo_vectors_vs_embeddings.md
       - Deterministic Execution: user/determinism_end_to_end.md
+      - Determinism Failure Story: user/determinism_failure_story.md
+      - Determinism by Analogy: user/determinism_analogies.md
+      - Determinism Guarantees Table: user/determinism_guarantees_table.md
+      - When to Stop Caring: user/determinism_stop_caring.md
       - Determinism Refusals: user/determinism_refusals.md
       - Deterministic Replay: user/deterministic_replay.md
       - Determinism Guide: user/determinism_guide.md
       - ND Execution Model: user/nd_execution_model.md
+      - ND Use Cases: user/nd_use_cases.md
       - ND Quality & Confidence: user/nd_quality_confidence.md
+      - ND Metrics Intuition: user/nd_metrics_intuition.md
       - ND Reproducibility: user/nd_reproducibility.md
       - ND Parameters: user/nd_parameters.md
       - ND Troubleshooting: user/nd_troubleshooting.md
+      - ND Examples: user/nd_examples.md
+      - ND Decision Tree: user/nd_decision_tree.md
       - ND Production Guide: guides/nd_production.md
       - Vector Store Semantics: user/vector_store_semantics.md
       - Embedding Lifecycle: user/embedding_lifecycle.md
       - Operator Guide: user/operator_guide.md
       - Security Guide: user/security_guide.md
       - Failure Modes & Safety: user/failure_modes_safety.md
+      - What Happens When Things Go Wrong: user/what_happens_when_things_go_wrong.md
       - Provenance as Audit: user/provenance_audit.md
+      - Safety Philosophy: user/safety_philosophy.md
+      - How To Think With Bijux-Vex: user/how_to_think_with_bijux_vex.md
       - Vector Stores:
           - Memory: user/vectorstores/memory.md
           - FAISS: user/vectorstores/faiss.md
