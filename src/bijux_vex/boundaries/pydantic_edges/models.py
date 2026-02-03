@@ -77,6 +77,7 @@ class ExecutionRequestPayload(StrictModel):
     nd_normalize_vectors: bool = False
     nd_normalize_query: bool = False
     nd_outlier_threshold: float | None = None
+    nd_low_signal_margin: float | None = None
     nd_adaptive_k: bool = False
     nd_low_signal_refuse: bool = False
     nd_replay_strict: bool = False
@@ -84,6 +85,7 @@ class ExecutionRequestPayload(StrictModel):
     nd_incremental_index: bool | None = None
     nd_max_candidates: int | None = None
     nd_max_index_memory_mb: int | None = None
+    nd_two_stage: bool = True
     nd_m: int | None = None
     nd_ef_construction: int | None = None
     nd_ef_search: int | None = None
@@ -102,97 +104,11 @@ class ExecutionRequestPayload(StrictModel):
 
     @model_validator(mode="after")  # type: ignore[untyped-decorator]
     def ensure_randomness_for_nd(self) -> Self:
-        if (
-            self.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and self.randomness_profile is None
-        ):
-            raise ValueError(
-                "randomness_profile required for non_deterministic execution"
-            )
-        if (
-            self.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and self.execution_budget is None
-        ):
-            raise ValueError(
-                "execution_budget required for non_deterministic execution"
-            )
-        if not isinstance(self.execution_intent, ExecutionIntent):
-            raise ValueError("execution_intent must be a known ExecutionIntent")
-        if not isinstance(self.execution_mode, ExecutionMode):
-            raise ValueError("execution_mode must be strict|bounded|exploratory")
-        if self.execution_contract is ExecutionContract.DETERMINISTIC:
-            if self.execution_mode is not ExecutionMode.STRICT:
-                raise ValueError("deterministic executions require strict mode")
-            if (
-                self.nd_profile is not None
-                or self.nd_target_recall is not None
-                or self.nd_latency_budget_ms is not None
-                or self.nd_witness_rate is not None
-                or self.nd_witness_sample_k is not None
-                or self.nd_witness_mode is not None
-                or self.nd_build_on_demand
-                or self.nd_candidate_k is not None
-                or self.nd_diversity_lambda is not None
-                or self.nd_normalize_vectors
-                or self.nd_normalize_query
-                or self.nd_outlier_threshold is not None
-                or self.nd_adaptive_k
-                or self.nd_low_signal_refuse
-                or self.nd_replay_strict
-                or self.nd_warmup_queries is not None
-                or self.nd_incremental_index is not None
-                or self.nd_max_candidates is not None
-                or self.nd_max_index_memory_mb is not None
-                or self.nd_m is not None
-                or self.nd_ef_construction is not None
-                or self.nd_ef_search is not None
-                or self.nd_max_ef_search is not None
-                or self.nd_space is not None
-            ):
-                raise ValueError("nd_* settings require non_deterministic execution")
-        else:
-            if self.execution_mode is ExecutionMode.STRICT:
-                raise ValueError(
-                    "non_deterministic executions require bounded or exploratory mode"
-                )
-            if self.nd_profile not in {None, "fast", "balanced", "accurate"}:
-                raise ValueError("nd_profile must be fast|balanced|accurate")
-            if self.nd_target_recall is not None and not (
-                0.0 < self.nd_target_recall <= 1.0
-            ):
-                raise ValueError("nd_target_recall must be within (0,1]")
-            if self.nd_latency_budget_ms is not None and self.nd_latency_budget_ms <= 0:
-                raise ValueError("nd_latency_budget_ms must be positive")
-            if self.nd_witness_rate is not None and not (
-                0.0 < self.nd_witness_rate <= 1.0
-            ):
-                raise ValueError("nd_witness_rate must be within (0,1]")
-            if self.nd_witness_mode not in {None, "off", "sample", "full"}:
-                raise ValueError("nd_witness_mode must be off|sample|full")
-            if self.nd_witness_sample_k is not None and self.nd_witness_sample_k <= 0:
-                raise ValueError("nd_witness_sample_k must be positive")
-            if (
-                self.nd_max_index_memory_mb is not None
-                and self.nd_max_index_memory_mb <= 0
-            ):
-                raise ValueError("nd_max_index_memory_mb must be positive")
-            if self.nd_m is not None and self.nd_m <= 0:
-                raise ValueError("nd_m must be positive")
-            if self.nd_ef_construction is not None and self.nd_ef_construction <= 0:
-                raise ValueError("nd_ef_construction must be positive")
-            if self.nd_ef_search is not None and self.nd_ef_search <= 0:
-                raise ValueError("nd_ef_search must be positive")
-            if self.nd_max_ef_search is not None and self.nd_max_ef_search <= 0:
-                raise ValueError("nd_max_ef_search must be positive")
-            if self.nd_space not in {None, "l2", "cosine", "ip"}:
-                raise ValueError("nd_space must be l2|cosine|ip")
-            if self.randomness_profile and self.randomness_profile.seed is None:
-                sources = tuple(self.randomness_profile.sources or ())
-                if not sources or not self.randomness_profile.non_replayable:
-                    raise ValueError(
-                        "randomness_profile requires seed or "
-                        "non_replayable with explicit sources"
-                    )
+        from bijux_vex.boundaries.pydantic_edges.validators import (
+            validate_execution_request_payload,
+        )
+
+        validate_execution_request_payload(self)
         return self
 
 
