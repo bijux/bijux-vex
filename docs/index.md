@@ -1,7 +1,7 @@
 # bijux-vex — vector execution engine with explicit determinism
 
 [![PyPI - Version](https://img.shields.io/pypi/v/bijux-vex.svg)](https://pypi.org/project/bijux-vex/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bijux-vex.svg)](https://pypi.org/project/bijux-vex/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Typing: typed (PEP 561)](https://img.shields.io/badge/typing-typed-4F8CC9.svg)](https://peps.python.org/pep-0561/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bijux/bijux-vex/raw/main/LICENSES/MIT.txt)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-brightgreen)](https://bijux.github.io/bijux-vex/)
