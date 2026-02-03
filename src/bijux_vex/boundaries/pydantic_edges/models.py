@@ -26,6 +26,7 @@ class IngestRequest(StrictModel):
     embed_model: str | None = None
     cache_embeddings: str | None = None
     correlation_id: str | None = None
+    idempotency_key: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
     vector_store_options: dict[str, str] | None = None

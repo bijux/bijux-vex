@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from bijux_vex.core.errors import PluginLoadError
 from bijux_vex.infra.plugins.contract import PluginContract
@@ -81,6 +82,8 @@ class EmbeddingProviderRegistry:
         key = (name or self._default or "").lower()
         if not key:
             raise ValueError("Embedding provider name is required")
+        if key not in self._providers and key == "example":
+            _maybe_register_example(self)
         if key not in self._providers:
             raise ValueError(f"Unknown embedding provider: {name}")
         factory, _contract = self._providers[key]
@@ -164,7 +167,24 @@ def _register_sentence_transformers() -> None:
 
 
 _register_sentence_transformers()
+_register_example_embedding: Callable[[Any], None] | None = None
+try:
+    from bijux_vex.plugins.example import (
+        register_embedding as _register_example_embedding,
+    )
+except Exception:  # pragma: no cover
+    _register_example_embedding = None
+if _register_example_embedding is not None:
+    _register_example_embedding(EMBEDDING_PROVIDERS)
 load_entrypoints("bijux_vex.embeddings", EMBEDDING_PROVIDERS)
+
+
+def _maybe_register_example(registry: EmbeddingProviderRegistry) -> None:
+    try:
+        from bijux_vex.plugins.example import register_embedding
+    except Exception:
+        return
+    register_embedding(registry)
 
 
 __all__ = [

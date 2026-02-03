@@ -31,6 +31,15 @@ class EmbeddingConfig:
 class ExecutionConfig:
     vector_store: VectorStoreConfig | None = None
     embeddings: EmbeddingConfig | None = None
+    resource_limits: ResourceLimits | None = None
+
+
+@dataclass(frozen=True)
+class ResourceLimits:
+    max_vectors_per_ingest: int | None = None
+    max_k: int | None = None
+    max_query_size: int | None = None
+    max_execution_time_ms: int | None = None
 
 
 __all__ = [
@@ -38,4 +47,5 @@ __all__ = [
     "EmbeddingCacheConfig",
     "EmbeddingConfig",
     "ExecutionConfig",
+    "ResourceLimits",
 ]

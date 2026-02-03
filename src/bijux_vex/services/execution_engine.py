@@ -10,8 +10,10 @@ class VectorExecutionEngine(Orchestrator):
     """Thin wrapper aliasing Orchestrator to the public engine name."""
 
     # Explicit pass-throughs to keep public surface stable and testable
-    def list_artifacts(self) -> dict[str, object]:
-        return super().list_artifacts()
+    def list_artifacts(
+        self, *, limit: int | None = None, offset: int = 0
+    ) -> dict[str, object]:
+        return super().list_artifacts(limit=limit, offset=offset)
 
     def capabilities(self) -> dict[str, object]:
         return super().capabilities()

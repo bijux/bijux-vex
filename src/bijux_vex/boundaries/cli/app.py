@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
+import os
 from pathlib import Path
 import sys
 from typing import no_type_check
+import zipfile
 
 import typer
 
@@ -38,14 +40,19 @@ from bijux_vex.core.config import (
     EmbeddingCacheConfig,
     EmbeddingConfig,
     ExecutionConfig,
+    ResourceLimits,
     VectorStoreConfig,
 )
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import BijuxError, ValidationError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
+from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
+from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
+from bijux_vex.infra.logging import enable_trace, trace_events
 from bijux_vex.infra.metrics import METRICS
+from bijux_vex.infra.run_store import RunStore
 from bijux_vex.services.execution_engine import VectorExecutionEngine
 
 app = typer.Typer(add_completion=False)
@@ -53,6 +60,8 @@ vdb_app = typer.Typer(add_completion=False, help="Vector DB utilities")
 app.add_typer(vdb_app, name="vdb")
 config_app = typer.Typer(add_completion=False, help="Configuration utilities")
 app.add_typer(config_app, name="config")
+artifact_app = typer.Typer(add_completion=False, help="Artifact bundle utilities")
+app.add_typer(artifact_app, name="artifact")
 
 
 @dataclass(frozen=True)
@@ -60,6 +69,9 @@ class OutputOptions:
     fmt: str | None = None
     output: Path | None = None
     config_path: Path | None = None
+    trace: bool = False
+    quiet: bool = False
+    no_color: bool = False
 
 
 @app.callback()
@@ -75,8 +87,23 @@ def _main_callback(
     config: Path | None = typer.Option(  # noqa: B008
         None, "--config", help="Load configuration from a TOML/YAML file"
     ),
+    trace: bool = typer.Option(False, "--trace", help="Emit trace metadata"),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress non-error output"),
+    no_color: bool = typer.Option(False, "--no-color", help="Disable colored output"),
 ) -> None:
-    ctx.obj = OutputOptions(fmt=fmt, output=output, config_path=config)
+    if trace:
+        enable_trace()
+    if no_color:
+        os.environ["RICH_NO_COLOR"] = "1"
+        os.environ["TYPER_COLOR"] = "0"
+    ctx.obj = OutputOptions(
+        fmt=fmt,
+        output=output,
+        config_path=config,
+        trace=trace,
+        quiet=quiet,
+        no_color=no_color,
+    )
 
 
 def _render_table(data: object) -> str:
@@ -105,18 +132,25 @@ def _emit(
     options: OutputOptions | None = getattr(ctx, "obj", None) if ctx else None
     fmt = options.fmt if options else None
     output = options.output if options else None
+    quiet = options.quiet if options else False
+    trace = options.trace if options else False
+    payload: object = data
+    if trace:
+        payload = {"data": data, "trace": trace_events()}
     if fmt == "table":
         payload = table or _render_table(data)
-        typer.echo(payload)
-        if output:
-            output.write_text(payload, encoding="utf-8")
+        if not quiet:
+            typer.echo(payload)
+            if output:
+                output.write_text(payload, encoding="utf-8")
         return
-    if fmt is None and table is not None:
+    if fmt is None and table is not None and not quiet:
         typer.echo(table)
-    payload = json.dumps(data, default=str)
-    typer.echo(payload)
+    serialized = json.dumps(payload, default=str)
+    if not quiet:
+        typer.echo(serialized)
     if output:
-        output.write_text(payload, encoding="utf-8")
+        output.write_text(serialized, encoding="utf-8")
 
 
 def _config_to_dict(config: ExecutionConfig | None) -> dict[str, object]:
@@ -134,6 +168,13 @@ def _redact_config(config: ExecutionConfig | None) -> dict[str, object]:
         )
         vs["uri"] = resolved.uri_redacted
     return payload
+
+
+def _load_bundle(path: Path) -> dict[str, object]:
+    with zipfile.ZipFile(path, "r") as zf:
+        metadata = json.loads(zf.read("metadata.json").decode("utf-8"))
+        result = json.loads(zf.read("result.json").decode("utf-8"))
+        return {"metadata": metadata, "result": result}
 
 
 def _parse_contract(raw: str) -> ExecutionContract:
@@ -183,6 +224,7 @@ def _load_config(config_path: Path | None) -> ExecutionConfig | None:
         raise ValueError("config file must be .toml or .yaml/.yml")
     vector_store_cfg = payload.get("vector_store") or {}
     embed_cfg = payload.get("embeddings") or {}
+    limits_cfg = payload.get("resource_limits") or {}
     cache_cfg = embed_cfg.get("cache") or {}
     vs_config = None
     if vector_store_cfg.get("backend"):
@@ -204,7 +246,17 @@ def _load_config(config_path: Path | None) -> ExecutionConfig | None:
                 else None
             ),
         )
-    return ExecutionConfig(vector_store=vs_config, embeddings=embed_config)
+    limits = None
+    if limits_cfg:
+        limits = ResourceLimits(
+            max_vectors_per_ingest=limits_cfg.get("max_vectors_per_ingest"),
+            max_k=limits_cfg.get("max_k"),
+            max_query_size=limits_cfg.get("max_query_size"),
+            max_execution_time_ms=limits_cfg.get("max_execution_time_ms"),
+        )
+    return ExecutionConfig(
+        vector_store=vs_config, embeddings=embed_config, resource_limits=limits
+    )
 
 
 def _build_config(
@@ -231,13 +283,71 @@ def _build_config(
             model=embed_model,
             cache=cache_cfg,
         )
-    return ExecutionConfig(vector_store=vs_config, embeddings=embed_config)
+    limits = base_config.resource_limits if base_config else None
+    return ExecutionConfig(
+        vector_store=vs_config, embeddings=embed_config, resource_limits=limits
+    )
 
 
 @app.command()
 @no_type_check
-def list_artifacts(ctx: typer.Context) -> None:
-    _emit(ctx, VectorExecutionEngine().list_artifacts())
+def list_artifacts(
+    ctx: typer.Context,
+    limit: int | None = typer.Option(None, "--limit"),
+    offset: int = typer.Option(0, "--offset"),
+) -> None:
+    _emit(ctx, VectorExecutionEngine().list_artifacts(limit=limit, offset=offset))
+
+
+@app.command()
+@no_type_check
+def list_runs(
+    ctx: typer.Context,
+    limit: int | None = typer.Option(None, "--limit"),
+    offset: int = typer.Option(0, "--offset"),
+) -> None:
+    runs = RunStore().list_runs(limit=limit, offset=offset)
+    _emit(ctx, {"runs": runs})
+
+
+@app.command()
+@no_type_check
+def init(
+    ctx: typer.Context,
+    config_path: Path = typer.Option(  # noqa: B008
+        Path("bijux_vex.toml"), "--config-path"
+    ),
+    force: bool = typer.Option(False, "--force"),
+) -> None:
+    config_template = """[vector_store]
+backend = "memory"
+# uri = "index.faiss"
+
+[embeddings]
+provider = "sentence_transformers"
+model = "all-MiniLM-L6-v2"
+
+[resource_limits]
+# max_vectors_per_ingest = 10000
+# max_k = 50
+# max_query_size = 10000
+# max_execution_time_ms = 2000
+"""
+    if config_path.exists() and not force:
+        typer.echo("Config already exists. Use --force to overwrite.")
+        sys.exit(1)
+    config_path.write_text(config_template, encoding="utf-8")
+    for folder in (Path("artifacts"), Path("runs")):
+        folder.mkdir(parents=True, exist_ok=True)
+    gitignore = Path(".gitignore")
+    lines = []
+    if gitignore.exists():
+        lines = gitignore.read_text(encoding="utf-8").splitlines()
+    for entry in ["artifacts/", "runs/", "*.sqlite", "*.faiss", "*.meta.json"]:
+        if entry not in lines:
+            lines.append(entry)
+    gitignore.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _emit(ctx, {"status": "initialized", "config": str(config_path)})
 
 
 @app.command()
@@ -299,6 +409,132 @@ def ingest(
         engine = VectorExecutionEngine(config=config)
         result = engine.ingest(req)
         _emit(ctx, result)
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@app.command()
+@no_type_check
+def validate(
+    ctx: typer.Context,
+    doc: list[str] = typer.Option(None, "--doc"),  # noqa: B008
+    vector: list[str] = typer.Option(None, "--vector"),  # noqa: B008
+    execution_contract: str | None = typer.Option(None, "--execution-contract"),
+    vector_store: str | None = typer.Option(None, "--vector-store"),
+    vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+) -> None:
+    try:
+        docs = doc or []
+        vectors = [json.loads(v) for v in (vector or [])]
+        if docs and vectors and len(docs) != len(vectors):
+            raise ValidationError(message="doc/vector alignment mismatch")
+        if vectors:
+            dims = {len(v) for v in vectors}
+            if len(dims) > 1:
+                raise ValidationError(message="vectors have inconsistent dimensions")
+        base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
+        config = _build_config(
+            vector_store=vector_store,
+            vector_store_uri=vector_store_uri,
+            base_config=base_config,
+        )
+        if config.vector_store:
+            VECTOR_STORES.resolve(
+                config.vector_store.backend or "memory",
+                uri=config.vector_store.uri,
+                options=config.vector_store.options,
+            )
+        if execution_contract:
+            contract = _parse_contract(execution_contract)
+            if config.vector_store:
+                desc = VECTOR_STORES.resolve(
+                    config.vector_store.backend or "memory",
+                    uri=config.vector_store.uri,
+                    options=config.vector_store.options,
+                ).descriptor
+                if (
+                    contract is ExecutionContract.DETERMINISTIC
+                    and not desc.deterministic_exact
+                ):
+                    raise ValidationError(
+                        message="deterministic contract requires deterministic vector store"
+                    )
+                if (
+                    contract is ExecutionContract.NON_DETERMINISTIC
+                    and not desc.supports_ann
+                ):
+                    raise ValidationError(
+                        message="non_deterministic contract requires ANN-capable vector store"
+                    )
+        _emit(ctx, {"status": "valid"})
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@app.command()
+@no_type_check
+def doctor(
+    ctx: typer.Context,
+    vector_store: str | None = typer.Option(None, "--vector-store"),
+    vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+) -> None:
+    try:
+        extras = {}
+        for module in ("faiss", "qdrant_client", "sentence_transformers"):
+            try:
+                __import__(module)
+                extras[module] = True
+            except Exception:
+                extras[module] = False
+        base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
+        config = _build_config(
+            vector_store=vector_store,
+            vector_store_uri=vector_store_uri,
+            base_config=base_config,
+        )
+        backend_status = {"configured": False}
+        if config.vector_store:
+            backend_status["configured"] = True
+            resolution = VECTOR_STORES.resolve(
+                config.vector_store.backend or "memory",
+                uri=config.vector_store.uri,
+                options=config.vector_store.options,
+            )
+            backend_status.update(
+                {
+                    "backend": resolution.descriptor.name,
+                    "available": resolution.descriptor.available,
+                    "uri_redacted": resolution.uri_redacted,
+                }
+            )
+            adapter = resolution.adapter
+            if hasattr(adapter, "status"):
+                backend_status["status"] = adapter.status()
+        run_dir = RunStore()._base
+        workspace = Path.cwd()
+        permissions = {
+            "workspace_writable": os.access(workspace, os.W_OK),
+            "run_dir_writable": os.access(run_dir, os.W_OK)
+            if run_dir.exists()
+            else True,
+        }
+        report = {
+            "extras": extras,
+            "backend": backend_status,
+            "embeddings": {"providers": EMBEDDING_PROVIDERS.providers()},
+            "permissions": permissions,
+        }
+        _emit(ctx, report)
     except BijuxError as exc:
         record_failure(exc)
         if is_refusal(exc):
@@ -457,9 +693,10 @@ def execute(
         engine = VectorExecutionEngine(config=config)
         result = engine.execute(req)
         if explain:
-            explain_result = engine.explain(
-                ExplainRequest(result_id=result["result_id"])
-            )
+            results = result.get("results", [])
+            if not results:
+                raise ValidationError(message="No results available to explain")
+            explain_result = engine.explain(ExplainRequest(result_id=results[0]))
             _emit(
                 ctx,
                 {"result": result, "explain": explain_result},
@@ -516,7 +753,7 @@ def replay(
 @no_type_check
 def compare(
     ctx: typer.Context,
-    vector: str = typer.Option(..., "--vector"),
+    vector: str | None = typer.Option(None, "--vector"),
     top_k: int = 5,
     execution_intent: str = typer.Option(
         ...,
@@ -532,8 +769,61 @@ def compare(
     artifact_b: str = typer.Option("art-1", "--artifact-b"),
     vector_store: str | None = typer.Option(None, "--vector-store"),
     vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+    run_a: str | None = typer.Option(None, "--run-a"),
+    run_b: str | None = typer.Option(None, "--run-b"),
+    bundle_a: Path | None = typer.Option(None, "--bundle-a"),  # noqa: B008
+    bundle_b: Path | None = typer.Option(None, "--bundle-b"),  # noqa: B008
 ) -> None:
     try:
+        if run_a or run_b or bundle_a or bundle_b:
+            if not (run_a and run_b) and not (bundle_a and bundle_b):
+                raise ValidationError(
+                    message="compare requires both --run-a/--run-b or both --bundle-a/--bundle-b"
+                )
+            if run_a and run_b:
+                rec_a = RunStore().load(run_a)
+                rec_b = RunStore().load(run_b)
+                results_a = rec_a.result.get("results", []) if rec_a.result else []
+                results_b = rec_b.result.get("results", []) if rec_b.result else []
+                meta_a = rec_a.metadata
+                meta_b = rec_b.metadata
+            else:
+                bundle_a_data = _load_bundle(bundle_a)
+                bundle_b_data = _load_bundle(bundle_b)
+                results_a = bundle_a_data["result"].get("results", [])
+                results_b = bundle_b_data["result"].get("results", [])
+                meta_a = bundle_a_data["metadata"]
+                meta_b = bundle_b_data["metadata"]
+            set_a = set(results_a)
+            set_b = set(results_b)
+            overlap = set_a & set_b
+            union = set_a | set_b
+            overlap_ratio = len(overlap) / len(union) if union else 1.0
+            recall_delta = (len(overlap) / len(set_a) if set_a else 1.0) - (
+                len(overlap) / len(set_b) if set_b else 1.0
+            )
+            output = {
+                "execution_a": meta_a.get("execution_id"),
+                "execution_b": meta_b.get("execution_id"),
+                "overlap_ratio": overlap_ratio,
+                "recall_delta": recall_delta,
+                "execution_contract_diff": {
+                    "a": meta_a.get("request", {}).get("execution_contract"),
+                    "b": meta_b.get("request", {}).get("execution_contract"),
+                },
+                "backend_diff": {
+                    "a": meta_a.get("backend"),
+                    "b": meta_b.get("backend"),
+                },
+                "vector_store_diff": {
+                    "a": meta_a.get("vector_store", {}),
+                    "b": meta_b.get("vector_store", {}),
+                },
+            }
+            _emit(ctx, output)
+            return
+        if vector is None:
+            raise ValidationError(message="--vector required for artifact comparison")
         intent = _parse_intent(execution_intent)
         contract = _parse_contract(execution_contract)
         payload = ExecutionRequestPayload(
@@ -627,6 +917,81 @@ def vdb_rebuild(
         else:
             payload["error"] = {"message": str(exc)}
         _emit(ctx, payload)
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@artifact_app.command("pack")
+@no_type_check
+def artifact_pack(
+    ctx: typer.Context,
+    run_id: str = typer.Argument(...),
+    out: Path = typer.Option(Path("bundle.zip"), "--out"),  # noqa: B008
+    include_vectors: bool = typer.Option(False, "--include-vectors"),
+) -> None:
+    try:
+        run = RunStore().load(run_id)
+        base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
+        config_payload = _redact_config(base_config)
+        engine = VectorExecutionEngine()
+        vectors_payload: dict[str, object] = {}
+        if include_vectors:
+            vectors_payload["vectors"] = []
+            for vid in run.result.get("results", []) if run.result else []:
+                vec = engine.stores.vectors.get_vector(vid)
+                if vec:
+                    vectors_payload["vectors"].append(
+                        {"vector_id": vid, "values": list(vec.values)}
+                    )
+        vector_hashes = []
+        for vid in run.result.get("results", []) if run.result else []:
+            vec = engine.stores.vectors.get_vector(vid)
+            if vec:
+                vector_hashes.append(
+                    {"vector_id": vid, "hash": fingerprint(vec.values)}
+                )
+        bundle = {
+            "metadata": run.metadata,
+            "result": run.result or {},
+            "config": config_payload,
+            "vector_hashes": vector_hashes,
+        }
+        with zipfile.ZipFile(out, "w") as zf:
+            zf.writestr("metadata.json", json.dumps(bundle["metadata"], indent=2))
+            zf.writestr("result.json", json.dumps(bundle["result"], indent=2))
+            zf.writestr("config.json", json.dumps(bundle["config"], indent=2))
+            zf.writestr(
+                "vector_hashes.json", json.dumps(bundle["vector_hashes"], indent=2)
+            )
+            if include_vectors:
+                zf.writestr("vectors.json", json.dumps(vectors_payload, indent=2))
+        _emit(ctx, {"status": "packed", "bundle": str(out)})
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@artifact_app.command("unpack")
+@no_type_check
+def artifact_unpack(
+    ctx: typer.Context,
+    bundle: Path = typer.Argument(...),  # noqa: B008
+    out_dir: Path = typer.Option(Path("bundle_out"), "--out-dir"),  # noqa: B008
+) -> None:
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(bundle, "r") as zf:
+            zf.extractall(out_dir)
+        _emit(ctx, {"status": "unpacked", "path": str(out_dir)})
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
 

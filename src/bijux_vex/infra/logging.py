@@ -8,6 +8,8 @@ import os
 from typing import Any
 
 _LOGGER = logging.getLogger("bijux_vex")
+_TRACE_ENABLED = False
+_TRACE_EVENTS: list[dict[str, Any]] = []
 
 
 def log_event(name: str, **fields: Any) -> None:
@@ -20,6 +22,17 @@ def log_event(name: str, **fields: Any) -> None:
     else:
         rendered = " ".join(f"{k}={v}" for k, v in payload.items())
         _LOGGER.info(rendered)
+    if _TRACE_ENABLED:
+        _TRACE_EVENTS.append(payload)
 
 
-__all__ = ["log_event"]
+def enable_trace() -> None:
+    global _TRACE_ENABLED
+    _TRACE_ENABLED = True
+
+
+def trace_events() -> list[dict[str, Any]]:
+    return list(_TRACE_EVENTS)
+
+
+__all__ = ["log_event", "enable_trace", "trace_events"]
