@@ -76,6 +76,7 @@ nav:
       - Doc-to-Code Map: spec/doc_to_code_map.md
       - Irreducible Core: spec/irreducible_core.md
       - Architecture Diagram: spec/architecture_diagram.md
+      - v0.2 Narrative: architecture/v0.2_narrative.md
   - Contracts:
       - Backward Compatibility: contracts/backward_compatibility.md
       - Implicitness: contracts/implicitness.md
@@ -116,6 +117,7 @@ nav:
   - Maintainer:
       - Changelog: changelog.md
       - Benchmarks: maintainer/benchmarks.md
+      - Benchmark Truth Table: maintainer/benchmark_truth_table.md
       - Release Process: maintainer/release_process.md
       - Release Checklist: maintainer/release_checklist.md
       - Release Dry Run: maintainer/release_dry_run.md

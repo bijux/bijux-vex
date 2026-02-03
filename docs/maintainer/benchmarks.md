@@ -1,8 +1,11 @@
 # Benchmark Runs
 
+See `docs/maintainer/benchmark_truth_table.md` for what each benchmark measures and does not claim.
+
 ## Baselines
 - Baselines live under `benchmarks/baselines/`.
 - The CI matrix expects entries for memory, FAISS, and Qdrant (exact + ann).
+ - Replace `status: todo` placeholders after running on a dedicated host.
 
 ## Run Locally
 ```bash

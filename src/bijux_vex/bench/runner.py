@@ -27,6 +27,7 @@ from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
+from bijux_vex.core.identity.fingerprints import determinism_fingerprint
 from bijux_vex.infra.adapters.sqlite.backend import sqlite_backend
 from bijux_vex.services.execution_engine import VectorExecutionEngine
 
@@ -254,6 +255,19 @@ def run_benchmark(
             "platform": platform.platform(),
             "processor": platform.processor(),
             "machine": platform.machine(),
+        },
+        "provenance": {
+            "execution_contract": contract.value,
+            "execution_mode": execution_mode.value,
+            "backend": store_backend or "memory",
+            "reproducibility_bounds": "bit-identical"
+            if mode == "exact"
+            else "bounded",
+            "determinism_fingerprint": determinism_fingerprint(
+                "bench_vectors",
+                "bench_index",
+                mode,
+            ),
         },
     }
     if mode == "ann":

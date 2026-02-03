@@ -1,14 +1,28 @@
 {
-  "version": "0.2.0",
   "dataset": {
-    "size": 1000,
     "dimension": 32,
-    "query_count": 256
+    "query_count": 256,
+    "size": 1000
   },
   "runs": [
     {
+      "environment": {
+        "machine": "x86_64",
+        "platform": "Linux-6.8.0-94-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64",
+        "python": "3.12.3"
+      },
       "mode": "exact",
+      "status": "measured",
       "store_backend": "memory",
+      "summary": {
+        "mean_ms": 68.85534248055774,
+        "p50_ms": 67.18395749479532,
+        "p95_ms": 82.71300570219755,
+        "p99_ms": 108.90507156960666,
+        "throughput_qps": 14.523201308342399,
+        "warmup_ms": 16686.48825699836
+      },
       "timings_ms": [
         68.50839200615883,
         70.49321100115776,
@@ -266,46 +280,52 @@
         63.733716994524,
         65.85666500031948,
         113.59860900044441
-      ],
-      "summary": {
-        "mean_ms": 68.85534248055774,
-        "p50_ms": 67.18395749479532,
-        "p95_ms": 82.71300570219755,
-        "p99_ms": 108.90507156960666,
-        "throughput_qps": 14.523201308342399,
-        "warmup_ms": 16686.48825699836
-      },
-      "environment": {
-        "python": "3.12.3",
-        "platform": "Linux-6.8.0-94-generic-x86_64-with-glibc2.39",
-        "processor": "x86_64",
-        "machine": "x86_64"
-      },
-      "status": "measured"
+      ]
     },
     {
-      "store_backend": "faiss",
       "mode": "exact",
+      "notes": "TODO: generate baseline on a faster host (FAISS exact).",
       "status": "todo",
-      "notes": "TODO: generate baseline on a faster host (FAISS exact)."
+      "store_backend": "faiss"
     },
     {
-      "store_backend": "faiss",
       "mode": "ann",
+      "notes": "TODO: generate baseline on a faster host (FAISS ann).",
+      "quality_baseline": {
+        "kendall_tau_estimate": null,
+        "latency_p50_ms": null,
+        "latency_p95_ms": null,
+        "latency_p99_ms": null,
+        "overlap_at_k": null,
+        "rank_instability": null
+      },
       "status": "todo",
-      "notes": "TODO: generate baseline on a faster host (FAISS ann)."
+      "store_backend": "faiss"
     },
     {
-      "store_backend": "qdrant",
       "mode": "exact",
+      "notes": "TODO: generate baseline on a faster host (Qdrant exact).",
       "status": "todo",
-      "notes": "TODO: generate baseline on a faster host (Qdrant exact)."
+      "store_backend": "qdrant"
     },
     {
-      "store_backend": "qdrant",
       "mode": "ann",
+      "notes": "TODO: generate baseline on a faster host (Qdrant ann).",
+      "quality_baseline": {
+        "kendall_tau_estimate": null,
+        "latency_p50_ms": null,
+        "latency_p95_ms": null,
+        "latency_p99_ms": null,
+        "overlap_at_k": null,
+        "rank_instability": null
+      },
       "status": "todo",
-      "notes": "TODO: generate baseline on a faster host (Qdrant ann)."
+      "store_backend": "qdrant"
     }
-  ]
+  ],
+  "truth_table": {
+    "ann": "Measures ND latency and quality (overlap@k, instability) under bounded settings.",
+    "exact": "Measures deterministic exact kNN latency and throughput on fixed dataset."
+  },
+  "version": "0.2.0"
 }
