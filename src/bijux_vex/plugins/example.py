@@ -47,13 +47,17 @@ class ExampleEmbeddingProvider(EmbeddingProvider):
         vectors = [tuple(0.0 for _ in range(3)) for _ in texts]
         metadata = EmbeddingMetadata(
             provider=self.name,
+            provider_version="example-1",
             model=model,
             model_version="example",
             embedding_determinism="deterministic",
             embedding_seed=0,
             embedding_device="cpu",
             embedding_dtype="float32",
-            config_hash=embedding_config_hash(self.name, model, options or {}),
+            embedding_normalization="false",
+            config_hash=embedding_config_hash(
+                self.name, model, options or {}, provider_version="example-1"
+            ),
         )
         return EmbeddingBatch(vectors=vectors, metadata=metadata)
 

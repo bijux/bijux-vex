@@ -24,6 +24,10 @@ from bijux_vex.infra.embeddings.registry import (
 class SentenceTransformersProvider(EmbeddingProvider):
     name = "sentence_transformers"
 
+    @property
+    def provider_version(self) -> str | None:
+        return getattr(sentence_transformers, "__version__", None)
+
     def embed(
         self, texts: list[str], model: str, options: Mapping[str, str] | None = None
     ) -> EmbeddingBatch:
@@ -34,6 +38,7 @@ class SentenceTransformersProvider(EmbeddingProvider):
         if not model:
             raise ValueError("model id required for embeddings")
         options = dict(options or {})
+        options.setdefault("normalize", "false")
         device = options.get("device")
         encoder = SentenceTransformer(model, device=device)
         vectors = encoder.encode(
@@ -45,13 +50,17 @@ class SentenceTransformersProvider(EmbeddingProvider):
         vectors = np.asarray(vectors, dtype="float32")
         metadata = EmbeddingMetadata(
             provider=self.name,
+            provider_version=self.provider_version,
             model=model,
             model_version=getattr(sentence_transformers, "__version__", None),
             embedding_determinism="model_dependent",
             embedding_seed=None,
             embedding_device=str(getattr(encoder, "device", device) or ""),
             embedding_dtype=str(vectors.dtype),
-            config_hash=embedding_config_hash(self.name, model, options),
+            embedding_normalization=options.get("normalize"),
+            config_hash=embedding_config_hash(
+                self.name, model, options, provider_version=self.provider_version
+            ),
         )
         return EmbeddingBatch(
             vectors=[tuple(map(float, row)) for row in vectors.tolist()],

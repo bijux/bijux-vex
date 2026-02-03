@@ -281,8 +281,13 @@ class Orchestrator:
                 provider = EMBEDDING_PROVIDERS.resolve(embed_provider)
             except ValueError as exc:
                 raise ValidationError(message=str(exc)) from exc
-            options: dict[str, str] = {}
-            config_hash = embedding_config_hash(provider.name, embed_model, options)
+            options: dict[str, str] = {"normalize": "false"}
+            config_hash = embedding_config_hash(
+                provider.name,
+                embed_model,
+                options,
+                provider_version=provider.provider_version,
+            )
             try:
                 cache = build_cache(cache_spec)
             except ValueError as exc:
@@ -294,6 +299,17 @@ class Orchestrator:
                 for idx, doc_text in enumerate(req.documents):
                     key = cache_key(embed_model, doc_text, config_hash)
                     entry = cache.get(key)
+                    if entry:
+                        expected = {
+                            "embedding_provider": provider.name,
+                            "embedding_provider_version": provider.provider_version,
+                            "embedding_normalization": options.get("normalize"),
+                        }
+                        if any(
+                            entry.metadata.get(k) != ("" if v is None else str(v))
+                            for k, v in expected.items()
+                        ):
+                            entry = None
                     if entry:
                         vectors[idx] = list(entry.vector)
                         embedding_meta_by_index[idx] = entry.metadata
@@ -309,16 +325,22 @@ class Orchestrator:
                     raise ValidationError(
                         message="embedding provider returned mismatched vector count"
                     )
+                if not batch.metadata.embedding_determinism:
+                    raise ValidationError(
+                        message="embedding provider did not declare determinism"
+                    )
                 for idx, embed_vec in zip(pending_idx, batch.vectors, strict=False):
                     vectors[idx] = list(embed_vec)
                     meta_dict = metadata_as_dict(
                         {
                             "embedding_provider": batch.metadata.provider,
+                            "embedding_provider_version": batch.metadata.provider_version,
                             "embedding_model_version": batch.metadata.model_version,
                             "embedding_determinism": batch.metadata.embedding_determinism,
                             "embedding_seed": batch.metadata.embedding_seed,
                             "embedding_device": batch.metadata.embedding_device,
                             "embedding_dtype": batch.metadata.embedding_dtype,
+                            "embedding_normalization": batch.metadata.embedding_normalization,
                         }
                     )
                     embedding_meta_by_index[idx] = meta_dict
@@ -482,13 +504,6 @@ class Orchestrator:
             if req.randomness_profile
             else None
         )
-        if (
-            req.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and req.randomness_profile is None
-        ):
-            raise ValidationError(
-                message="randomness_profile required for non_deterministic execution"
-            )
         request = ExecutionRequest(
             request_id="req-1",
             text=req.request_text,
@@ -666,13 +681,6 @@ class Orchestrator:
         art_a = self._require_artifact(artifact_a_id or self.default_artifact_id)
         art_b = self._require_artifact(artifact_b_id or self.default_artifact_id)
         vector_values = tuple(req.vector)
-        if (
-            req.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and req.randomness_profile is None
-        ):
-            raise ValidationError(
-                message="randomness_profile required for non_deterministic execution"
-            )
 
         def _as_request(artifact: ExecutionArtifact) -> ExecutionRequest:
             return ExecutionRequest(

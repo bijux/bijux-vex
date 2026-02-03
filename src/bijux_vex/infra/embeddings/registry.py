@@ -13,12 +13,14 @@ from bijux_vex.infra.plugins.entrypoints import load_entrypoints
 @dataclass(frozen=True)
 class EmbeddingMetadata:
     provider: str
+    provider_version: str | None
     model: str
     model_version: str | None
     embedding_determinism: str | None
     embedding_seed: int | None
     embedding_device: str | None
     embedding_dtype: str | None
+    embedding_normalization: str | None
     config_hash: str
 
 
@@ -30,6 +32,10 @@ class EmbeddingBatch:
 
 class EmbeddingProvider(ABC):
     name: str
+
+    @property
+    def provider_version(self) -> str | None:
+        return None
 
     @abstractmethod
     def embed(

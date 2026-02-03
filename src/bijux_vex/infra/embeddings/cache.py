@@ -72,10 +72,15 @@ def cache_key(model_id: str, text: str, config_hash: str) -> str:
 
 
 def embedding_config_hash(
-    provider: str, model_id: str, options: Mapping[str, str] | None
+    provider: str,
+    model_id: str,
+    options: Mapping[str, str] | None,
+    *,
+    provider_version: str | None = None,
 ) -> str:
     payload = {
         "provider": provider,
+        "provider_version": provider_version,
         "model": model_id,
         "options": sorted((options or {}).items()),
     }
