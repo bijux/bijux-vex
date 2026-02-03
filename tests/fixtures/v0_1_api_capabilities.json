@@ -1,0 +1,34 @@
+{
+  "contracts": [
+    "deterministic"
+  ],
+  "execution_modes": [
+    "strict",
+    "bounded",
+    "exploratory"
+  ],
+  "ann_status": "unavailable",
+  "storage_backends": [
+    {
+      "name": "memory",
+      "status": "stable",
+      "persistence": "ephemeral"
+    },
+    {
+      "name": "sqlite",
+      "status": "stable",
+      "persistence": "local"
+    },
+    {
+      "name": "hnsw",
+      "status": "experimental",
+      "persistence": "local"
+    },
+    {
+      "name": "pgvector",
+      "status": "experimental_excluded",
+      "persistence": "external",
+      "notes": "excluded from v1 freeze"
+    }
+  ]
+}
