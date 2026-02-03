@@ -79,6 +79,7 @@ nav:
       - Implicitness: contracts/implicitness.md
       - Error Style: contracts/error_style.md
       - Query Contract: contracts/query_contract.md
+      - ND Contract v1: contracts/nd_contract_v1.md
   - Design:
       - Scope: design/scope.md
       - Non-Goals: design/non_goals.md
