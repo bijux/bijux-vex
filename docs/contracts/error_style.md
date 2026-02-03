@@ -14,6 +14,8 @@ Give a concrete next step a user can take.
 4. Where to learn more  
 Point to a doc path in this repository (no external links required).
 
+Keep it short. If a sentence does not help a user act, remove it.
+
 **Template**
 
 ```
@@ -27,14 +29,14 @@ Where to learn more: <doc path>
 
 ```
 What happened: vector store backend unavailable.
-Why: 'faiss' could not be loaded (install extras for faiss).
-How to fix: pip install "bijux-vex[vectorstores]".
+Why: 'faiss' is not installed.
+How to fix: pip install "bijux-vex[vdb]".
 Where to learn more: docs/spec/vectorstore_adapter.md
 ```
 
 ```
 What happened: deterministic execution refused.
 Why: ANN mode is non-deterministic.
-How to fix: use --execution-contract deterministic or choose exact mode.
+How to fix: choose exact mode or switch to ND explicitly.
 Where to learn more: docs/spec/determinism_matrix.md
 ```
