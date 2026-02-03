@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import os
 from pathlib import Path
 import threading
@@ -21,10 +22,13 @@ from bijux_vex.contracts.tx import Tx
 from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
+    AnnIndexBuildError,
     AuthzDeniedError,
     BudgetExceededError,
     InvariantError,
+    NDExecutionUnavailableError,
     NotFoundError,
+    ReplayNotSupportedError,
     ValidationError,
 )
 from bijux_vex.core.errors.refusal import is_refusal, refusal_payload
@@ -466,6 +470,20 @@ class Orchestrator:
         log_event("ingest_end", correlation_id=correlation_id, elapsed_ms=elapsed())
         self._latest_corpus_fingerprint = corpus_fingerprint(req.documents)
         self._latest_vector_fingerprint = vectors_fingerprint(vectors)
+        existing_artifact = self.stores.ledger.get_artifact(self.default_artifact_id)
+        if (
+            existing_artifact
+            and existing_artifact.execution_contract
+            is ExecutionContract.NON_DETERMINISTIC
+            and existing_artifact.index_state == "ready"
+        ):
+            updated = replace(existing_artifact, index_state="invalidated")
+            with self._tx() as tx:
+                self.stores.ledger.put_artifact(tx, updated)
+            log_event(
+                "ann_index_invalidated",
+                artifact_id=existing_artifact.artifact_id,
+            )
         result = {"ingested": len(req.documents), "correlation_id": correlation_id}
         if req.idempotency_key:
             with self._idempotency_lock:
@@ -474,10 +492,20 @@ class Orchestrator:
 
     def materialize(self, req: ExecutionArtifactRequest) -> dict[str, Any]:
         self._guard_mutation("materialize")
+        index_mode = (req.index_mode or "exact").lower()
+        if index_mode not in {"exact", "ann"}:
+            raise ValidationError(message="index_mode must be exact|ann")
         existing = self.stores.ledger.get_artifact(self.default_artifact_id)
         if existing and existing.execution_contract is not req.execution_contract:
             raise InvariantError(
                 message="Cannot rebuild artifact with different execution contract"
+            )
+        if (
+            index_mode == "ann"
+            and req.execution_contract is ExecutionContract.DETERMINISTIC
+        ):
+            raise ValidationError(
+                message="ANN materialize requires non_deterministic execution_contract"
             )
         artifact = ExecutionArtifact(
             artifact_id=self.default_artifact_id,
@@ -490,6 +518,9 @@ class Orchestrator:
             schema_version="v1",
             execution_contract=req.execution_contract,
             build_params=self._artifact_build_params(),
+            index_state="unbuilt"
+            if req.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            else "ready",
         )
         plan = ExecutionPlan(
             algorithm="exact_vector_execution",
@@ -530,6 +561,23 @@ class Orchestrator:
             ),
             execution_id=execution_id,
         )
+        if index_mode == "ann":
+            ann_runner = getattr(self.backend, "ann", None)
+            if ann_runner is None:
+                raise NDExecutionUnavailableError(
+                    message="ANN runner required to build ANN index"
+                )
+            vectors = list(self.stores.vectors.list_vectors())
+            index_info = ann_runner.build_index(
+                artifact.artifact_id, vectors, artifact.metric, None
+            )
+            if index_info:
+                artifact = replace(
+                    artifact,
+                    build_params=artifact.build_params
+                    + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                    index_state="ready",
+                )
         with self._tx() as tx:
             self.authz.check(tx, action="put_artifact", resource="artifact")
             self.stores.ledger.put_artifact(tx, artifact)
@@ -574,6 +622,50 @@ class Orchestrator:
             raise InvariantError(
                 message="Execution contract does not match artifact execution contract"
             )
+        nd_settings = (
+            NDSettings(
+                profile=req.nd_profile,
+                target_recall=req.nd_target_recall,
+                latency_budget_ms=req.nd_latency_budget_ms,
+                witness_rate=req.nd_witness_rate,
+                witness_sample_k=req.nd_witness_sample_k,
+                build_on_demand=req.nd_build_on_demand,
+            )
+            if (
+                req.nd_profile is not None
+                or req.nd_target_recall is not None
+                or req.nd_latency_budget_ms is not None
+                or req.nd_witness_rate is not None
+                or req.nd_witness_sample_k is not None
+                or req.nd_build_on_demand
+            )
+            else None
+        )
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and artifact.index_state != "ready"
+        ):
+            ann_runner = getattr(self.backend, "ann", None)
+            if not req.nd_build_on_demand:
+                raise AnnIndexBuildError(
+                    message="ANN index missing; run materialize --index-mode ann or set --nd-build-on-demand"
+                )
+            if ann_runner is None:
+                raise NDExecutionUnavailableError(
+                    message="ANN runner required to build ANN index"
+                )
+            vectors = list(self.stores.vectors.list_vectors())
+            index_info = ann_runner.build_index(
+                artifact.artifact_id, vectors, artifact.metric, nd_settings
+            )
+            artifact = replace(
+                artifact,
+                build_params=artifact.build_params
+                + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                index_state="ready",
+            )
+            with self._tx() as tx:
+                self.stores.ledger.put_artifact(tx, artifact)
         randomness_budget = None
         if req.execution_budget:
             randomness_budget = {
@@ -590,6 +682,7 @@ class Orchestrator:
                 seed=req.randomness_profile.seed,
                 sources=tuple(req.randomness_profile.sources or ()),
                 bounded=req.randomness_profile.bounded,
+                non_replayable=req.randomness_profile.non_replayable,
                 budget=randomness_budget if randomness_budget else None,
                 envelopes=tuple(
                     (k, float(v))
@@ -619,21 +712,7 @@ class Orchestrator:
                 if req.execution_budget
                 else None,
             ),
-            nd_settings=NDSettings(
-                profile=req.nd_profile,
-                target_recall=req.nd_target_recall,
-                latency_budget_ms=req.nd_latency_budget_ms,
-                witness_rate=req.nd_witness_rate,
-                witness_sample_k=req.nd_witness_sample_k,
-            )
-            if (
-                req.nd_profile is not None
-                or req.nd_target_recall is not None
-                or req.nd_latency_budget_ms is not None
-                or req.nd_witness_rate is not None
-                or req.nd_witness_sample_k is not None
-            )
-            else None,
+            nd_settings=nd_settings,
         )
         session = start_execution_session(
             artifact,
@@ -648,6 +727,14 @@ class Orchestrator:
         if isinstance(vector_store_meta, dict):
             vector_store_index_params = vector_store_meta.get("index_params")
             vector_store_consistency = vector_store_meta.get("consistency")
+        ann_index_info: dict[str, object] | None = None
+        ann_runner = getattr(self.backend, "ann", None)
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and ann_runner is not None
+            and hasattr(ann_runner, "index_info")
+        ):
+            ann_index_info = ann_runner.index_info(artifact.artifact_id)
         backend_fingerprint = fingerprint(
             {
                 "backend": getattr(self.backend, "name", "unknown"),
@@ -676,6 +763,7 @@ class Orchestrator:
                 "execution_mode": req.execution_mode.value,
                 "nd_witness_rate": req.nd_witness_rate,
                 "nd_witness_sample_k": req.nd_witness_sample_k,
+                "nd_build_on_demand": req.nd_build_on_demand,
             },
             "backend": getattr(self.backend, "name", "unknown"),
             "vector_store": {
@@ -685,6 +773,7 @@ class Orchestrator:
                 "supports_ann": self.vector_store_resolution.descriptor.supports_ann,
                 "consistency": vector_store_consistency,
             },
+            "ann_index": ann_index_info,
             "determinism_fingerprints": {
                 "vectors": artifact.vector_fingerprint,
                 "config": artifact.index_config_fingerprint,
@@ -787,6 +876,8 @@ class Orchestrator:
         request_text: str,
         expected_contract: ExecutionContract | None = None,
         artifact_id: str | None = None,
+        randomness_profile: RandomnessProfile | None = None,
+        execution_budget: ExecutionBudget | None = None,
     ) -> dict[str, Any]:
         chosen_artifact_id = artifact_id
         if chosen_artifact_id is None:
@@ -800,6 +891,29 @@ class Orchestrator:
             raise InvariantError(
                 message="Replay contract does not match artifact execution contract"
             )
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and randomness_profile is None
+        ):
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay requires explicit randomness profile"
+            )
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and randomness_profile is not None
+            and randomness_profile.non_replayable
+        ):
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay refused for non-replayable requests"
+            )
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and randomness_profile is not None
+            and randomness_profile.seed is None
+        ):
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay requires a seed"
+            )
         request = ExecutionRequest(
             request_id="req-replay",
             text=request_text,
@@ -810,17 +924,14 @@ class Orchestrator:
             execution_mode=ExecutionMode.STRICT
             if artifact.execution_contract is ExecutionContract.DETERMINISTIC
             else ExecutionMode.BOUNDED,
-            execution_budget=ExecutionBudget(
-                max_latency_ms=10, max_memory_mb=10, max_error=1.0
-            )
-            if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            else None,
+            execution_budget=execution_budget,
         )
         outcome = replay(
             request,
             artifact,
             self.stores,
             ann_runner=getattr(self.backend, "ann", None),
+            randomness=randomness_profile,
         )
         return {
             "matches": outcome.matches,

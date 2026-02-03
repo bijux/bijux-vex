@@ -2,7 +2,7 @@
 # Copyright © 2025 Bijan Mousavi
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -49,6 +49,8 @@ from bijux_vex.core.errors import BijuxError, ValidationError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.identity.ids import fingerprint
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
+from bijux_vex.core.types import ExecutionBudget
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
 from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
 from bijux_vex.infra.logging import enable_trace, trace_events
@@ -558,6 +560,9 @@ def materialize(
         "--execution-contract",
         help="Execution contract (deterministic warns: non_deterministic loses replay guarantees)",
     ),
+    index_mode: str = typer.Option(
+        "exact", "--index-mode", help="Index mode: exact|ann"
+    ),
     vector_store: str | None = typer.Option(None, "--vector-store"),
     vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
 ) -> None:
@@ -574,6 +579,7 @@ def materialize(
         result = engine.materialize(
             ExecutionArtifactRequest(
                 execution_contract=contract,
+                index_mode=index_mode,
                 vector_store=vector_store,
                 vector_store_uri=vector_store_uri,
             )
@@ -622,6 +628,11 @@ def execute(
     randomness_bounded: bool = typer.Option(
         False, "--randomness-bounded", help="Whether randomness is bounded"
     ),
+    randomness_non_replayable: bool = typer.Option(
+        False,
+        "--randomness-non-replayable",
+        help="Declare ND run as non-replayable without a seed",
+    ),
     max_latency_ms: int | None = typer.Option(None, "--max-latency-ms"),
     max_memory_mb: int | None = typer.Option(None, "--max-memory-mb"),
     max_error: float | None = typer.Option(None, "--max-error"),
@@ -641,6 +652,9 @@ def execute(
     ),
     nd_witness_sample_k: int | None = typer.Option(
         None, "--nd-witness-sample-k", help="Exact witness top-k sample size"
+    ),
+    nd_build_on_demand: bool = typer.Option(
+        False, "--nd-build-on-demand", help="Build ANN index on demand"
     ),
     compare_to: str | None = typer.Option(
         None, "--compare-to", help="Compare ND run to exact (exact)"
@@ -676,6 +690,7 @@ def execute(
                     "seed": randomness_seed,
                     "sources": sources,
                     "bounded": randomness_bounded,
+                    "non_replayable": randomness_non_replayable,
                 }
             )
             if contract is ExecutionContract.NON_DETERMINISTIC
@@ -690,6 +705,7 @@ def execute(
             nd_latency_budget_ms=nd_latency_budget_ms,
             nd_witness_rate=nd_witness_rate,
             nd_witness_sample_k=nd_witness_sample_k,
+            nd_build_on_demand=nd_build_on_demand,
             correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
@@ -780,11 +796,49 @@ def explain(
 @app.command()
 @no_type_check
 def replay(
-    ctx: typer.Context, request_text: str = typer.Option(..., "--request-text")
+    ctx: typer.Context,
+    request_text: str = typer.Option(..., "--request-text"),
+    randomness_seed: int | None = typer.Option(None, "--randomness-seed"),
+    randomness_sources: str | None = typer.Option(
+        None,
+        "--randomness-sources",
+        help="Comma-separated randomness sources (required for non_deterministic)",
+    ),
+    randomness_bounded: bool = typer.Option(
+        False, "--randomness-bounded", help="Whether randomness is bounded"
+    ),
+    randomness_non_replayable: bool = typer.Option(
+        False,
+        "--randomness-non-replayable",
+        help="Declare ND run as non-replayable without a seed",
+    ),
+    max_latency_ms: int | None = typer.Option(None, "--max-latency-ms"),
+    max_memory_mb: int | None = typer.Option(None, "--max-memory-mb"),
+    max_error: float | None = typer.Option(None, "--max-error"),
 ) -> None:
     try:
         engine = VectorExecutionEngine()
-        result = engine.replay(request_text)
+        sources = (
+            [s.strip() for s in randomness_sources.split(",")]
+            if randomness_sources
+            else None
+        )
+        randomness_profile = RandomnessProfile(
+            seed=randomness_seed,
+            sources=tuple(sources or ()),
+            bounded=randomness_bounded,
+            non_replayable=randomness_non_replayable,
+        )
+        execution_budget = ExecutionBudget(
+            max_latency_ms=max_latency_ms,
+            max_memory_mb=max_memory_mb,
+            max_error=max_error,
+        )
+        result = engine.replay(
+            request_text,
+            randomness_profile=randomness_profile,
+            execution_budget=execution_budget,
+        )
         _emit(ctx, result)
     except BijuxError as exc:
         record_failure(exc)
@@ -922,6 +976,9 @@ def vdb_status(
         }
         if hasattr(adapter, "status"):
             status.update(adapter.status())
+        ann_runner = getattr(engine.backend, "ann", None)
+        if ann_runner is not None and hasattr(ann_runner, "index_info"):
+            status["ann_index"] = ann_runner.index_info(engine.default_artifact_id)
         _emit(ctx, status)
     except BijuxError as exc:
         record_failure(exc)
@@ -947,12 +1004,35 @@ def vdb_rebuild(
         engine = VectorExecutionEngine(
             config=_build_config(vector_store=vector_store, vector_store_uri=uri)
         )
+        index_type = "exact" if mode == "exact" else "ann"
+        if index_type == "ann":
+            ann_runner = getattr(engine.backend, "ann", None)
+            if ann_runner is None:
+                raise ValidationError(
+                    message="Selected backend does not support ANN rebuild"
+                )
+            artifact = engine.stores.ledger.get_artifact(engine.default_artifact_id)
+            if artifact is None:
+                raise ValidationError(message="No artifact available for ANN rebuild")
+            vectors = list(engine.stores.vectors.list_vectors())
+            index_info = ann_runner.build_index(
+                artifact.artifact_id, vectors, artifact.metric, None
+            )
+            updated = replace(
+                artifact,
+                build_params=artifact.build_params
+                + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                index_state="ready",
+            )
+            with engine._tx() as tx:
+                engine.stores.ledger.put_artifact(tx, updated)
+            _emit(ctx, {"status": "rebuilt", "ann_index": index_info})
+            return
         adapter = engine.vector_store_resolution.adapter
         if not hasattr(adapter, "rebuild"):
             raise ValidationError(
                 message="Selected vector store does not support rebuild"
             )
-        index_type = "exact" if mode == "exact" else "ann"
         status = adapter.rebuild(index_type=index_type)
         _emit(ctx, status)
     except BijuxError as exc:

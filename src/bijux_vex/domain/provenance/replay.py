@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.canon import canon
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
-from bijux_vex.core.errors import InvariantError
+from bijux_vex.core.errors import InvariantError, ReplayNotSupportedError
 from bijux_vex.core.identity.ids import fingerprint
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
 from bijux_vex.domain.execution_requests.execute import (
     execute_request,
@@ -43,6 +44,7 @@ def replay(
     artifact: ExecutionArtifact,
     resources: ExecutionResources,
     ann_runner: AnnExecutionRequestRunner | None = None,
+    randomness: RandomnessProfile | None = None,
     baseline_fingerprint: str | None = None,
 ) -> ReplayOutcome:
     if request.execution_contract is not artifact.execution_contract:
@@ -59,6 +61,18 @@ def replay(
     nondeterministic_sources: tuple[str, ...] = ()
     original_fp = baseline_fingerprint or _results_fingerprint(stored.results)
     if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+        if randomness is None:
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay requires randomness profile"
+            )
+        if randomness.non_replayable:
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay refused for non-replayable requests"
+            )
+        if randomness.seed is None:
+            raise ReplayNotSupportedError(
+                message="Non-deterministic replay requires a seed"
+            )
         nondeterministic_sources = stored.plan.randomness_labels()
         if not nondeterministic_sources:
             raise InvariantError(
@@ -69,6 +83,7 @@ def replay(
             artifact,
             request,
             resources,
+            randomness=randomness,
             ann_runner=ann_runner,
         )
         fresh_execution, _ = execute_request(

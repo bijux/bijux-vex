@@ -77,9 +77,12 @@ def classify_execution(
             randomness_sources=",".join(classification.randomness_sources),
         )
         return classification
-    if not randomness.sources and randomness.seed is None:
+    if randomness.seed is None and (
+        not randomness.sources or not randomness.non_replayable
+    ):
         raise DeterminismViolationError(
-            message="Non-deterministic execution requires seed or randomness sources"
+            message="Non-deterministic execution requires seed or "
+            "non_replayable randomness sources"
         )
     label = "bounded" if randomness.bounded else "nondeterministic"
     classification = DeterminismClassification(

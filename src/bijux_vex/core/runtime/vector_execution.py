@@ -17,6 +17,7 @@ class RandomnessProfile:
     seed: int | None = None
     sources: tuple[str, ...] = field(default_factory=tuple)
     bounded: bool = False
+    non_replayable: bool = False
     budget: dict[str, int | float] | None = None
     envelopes: tuple[tuple[str, float], ...] = ()
 
@@ -56,6 +57,8 @@ class VectorExecution:
             else (),
             "envelopes": self.randomness.envelopes if self.randomness else (),
         }
+        if self.randomness:
+            payload["non_replayable"] = self.randomness.non_replayable
         object.__setattr__(self, "execution_id", fingerprint(payload))
 
 
@@ -98,6 +101,8 @@ def execution_signature(
         "randomness": tuple(randomness.sources) if randomness else (),
         "seed": randomness.seed if randomness else None,
     }
+    if randomness:
+        payload["non_replayable"] = randomness.non_replayable
     return fingerprint(payload)
 
 

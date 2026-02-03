@@ -6,6 +6,7 @@ from bijux_vex.core.execution_intent import ExecutionIntent
 
 from bijux_vex.core.errors import BudgetExceededError
 from bijux_vex.core.execution_result import ApproximationReport
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.types import (
     Chunk,
@@ -133,7 +134,12 @@ def test_forcing_scenario_budget_fallback_replay_divergence():
     baseline_fp = exec_result.signature
 
     outcome = replay(
-        req, artifact, backend.stores, ann_runner=ann, baseline_fingerprint=baseline_fp
+        req,
+        artifact,
+        backend.stores,
+        ann_runner=ann,
+        randomness=RandomnessProfile(seed=1, sources=("ann",), non_replayable=False),
+        baseline_fingerprint=baseline_fp,
     )
     assert outcome.execution_contract is ExecutionContract.NON_DETERMINISTIC
     assert outcome.matches is False

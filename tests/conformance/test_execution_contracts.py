@@ -9,6 +9,7 @@ from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.errors import InvariantError, ValidationError
 from bijux_vex.core.execution_result import ApproximationReport
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.types import (
     Chunk,
     Document,
@@ -229,7 +230,12 @@ def test_non_deterministic_replay_declares_divergence():
     with backend.tx_factory() as tx:
         backend.stores.ledger.put_execution_result(tx, exec_two)
     outcome = replay(
-        request, artifact, backend.stores, ann_runner=ann, baseline_fingerprint=None
+        request,
+        artifact,
+        backend.stores,
+        ann_runner=ann,
+        randomness=RandomnessProfile(seed=1, sources=("ann",), non_replayable=False),
+        baseline_fingerprint=None,
     )
     assert outcome.execution_contract is ExecutionContract.NON_DETERMINISTIC
     assert outcome.nondeterministic_sources == ("ordering_flip",)

@@ -27,6 +27,8 @@ from bijux_vex.core.config import (
     VectorStoreConfig,
 )
 from bijux_vex.core.errors import BijuxError
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
+from bijux_vex.core.types import ExecutionBudget
 from bijux_vex.infra.run_store import RunStore
 from bijux_vex.services.execution_engine import VectorExecutionEngine
 
@@ -515,8 +517,26 @@ def build_app() -> FastAPI:
         try:
             if correlation_id:
                 response.headers["X-Correlation-Id"] = correlation_id
+            randomness_profile = None
+            if req.randomness_profile is not None:
+                randomness_profile = RandomnessProfile(
+                    seed=req.randomness_profile.seed,
+                    sources=tuple(req.randomness_profile.sources or ()),
+                    bounded=req.randomness_profile.bounded,
+                    non_replayable=req.randomness_profile.non_replayable,
+                )
+            execution_budget = None
+            if req.execution_budget is not None:
+                execution_budget = ExecutionBudget(
+                    max_latency_ms=req.execution_budget.max_latency_ms,
+                    max_memory_mb=req.execution_budget.max_memory_mb,
+                    max_error=req.execution_budget.max_error,
+                )
             return VectorExecutionEngine().replay(
-                request_text, artifact_id=req.artifact_id
+                request_text,
+                artifact_id=req.artifact_id,
+                randomness_profile=randomness_profile,
+                execution_budget=execution_budget,
             )
         except BijuxError as exc:
             _raise_http_error(exc, correlation_id)

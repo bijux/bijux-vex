@@ -85,6 +85,7 @@ class NDSettings:
     latency_budget_ms: int | None = None
     witness_rate: float | None = None
     witness_sample_k: int | None = None
+    build_on_demand: bool = False
 
 
 @dataclass(frozen=True)

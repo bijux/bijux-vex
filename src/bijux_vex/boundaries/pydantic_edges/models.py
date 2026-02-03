@@ -52,6 +52,7 @@ class RandomnessProfilePayload(StrictModel):
     seed: int | None = None
     sources: list[str] | None = None
     bounded: bool = False
+    non_replayable: bool = False
 
 
 class ExecutionRequestPayload(StrictModel):
@@ -69,6 +70,7 @@ class ExecutionRequestPayload(StrictModel):
     nd_latency_budget_ms: int | None = None
     nd_witness_rate: float | None = None
     nd_witness_sample_k: int | None = None
+    nd_build_on_demand: bool = False
     correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
@@ -109,6 +111,7 @@ class ExecutionRequestPayload(StrictModel):
                 or self.nd_latency_budget_ms is not None
                 or self.nd_witness_rate is not None
                 or self.nd_witness_sample_k is not None
+                or self.nd_build_on_demand
             ):
                 raise ValueError("nd_* settings require non_deterministic execution")
         else:
@@ -130,14 +133,30 @@ class ExecutionRequestPayload(StrictModel):
                 raise ValueError("nd_witness_rate must be within (0,1]")
             if self.nd_witness_sample_k is not None and self.nd_witness_sample_k <= 0:
                 raise ValueError("nd_witness_sample_k must be positive")
+            if self.randomness_profile and self.randomness_profile.seed is None:
+                sources = tuple(self.randomness_profile.sources or ())
+                if not sources or not self.randomness_profile.non_replayable:
+                    raise ValueError(
+                        "randomness_profile requires seed or "
+                        "non_replayable with explicit sources"
+                    )
         return self
 
 
 class ExecutionArtifactRequest(StrictModel):
     execution_contract: ExecutionContract
+    index_mode: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
     vector_store_options: dict[str, str] | None = None
+
+    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    def ensure_index_mode(self) -> Self:
+        if self.index_mode is None:
+            return self
+        if self.index_mode not in {"exact", "ann"}:
+            raise ValueError("index_mode must be exact|ann")
+        return self
 
 
 class ExplainRequest(StrictModel):

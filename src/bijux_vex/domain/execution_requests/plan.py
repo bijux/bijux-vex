@@ -210,13 +210,37 @@ def _build_nd_plan(
         )
         for source in ann_runner.randomness_sources
     )
+    reproducibility = _nd_reproducibility_bounds(
+        artifact, request, randomness, ann_runner
+    )
     plan = ExecutionPlan(
         algorithm="ann_approximate",
         contract=request.execution_contract,
         k=request.top_k,
         scoring_fn=artifact.metric,
         randomness_sources=randomness_sources,
-        reproducibility_bounds=ann_runner.reproducibility_bounds,
+        reproducibility_bounds=reproducibility,
         steps=("plan_nondeterministic", "execute_ann"),
     )
     return plan, "ann_approximate", randomness
+
+
+def _nd_reproducibility_bounds(
+    artifact: ExecutionArtifact,
+    request: ExecutionRequest,
+    randomness: RandomnessProfile | None,
+    ann_runner: AnnExecutionRequestRunner,
+) -> str:
+    seed = randomness.seed if randomness else None
+    non_replayable = randomness.non_replayable if randomness else False
+    bounds = [
+        f"backend={ann_runner.reproducibility_bounds}",
+        f"index_hash={artifact.index_config_fingerprint}",
+        f"seed={seed}",
+        f"non_replayable={non_replayable}",
+    ]
+    if request.nd_settings:
+        bounds.append(f"profile={request.nd_settings.profile}")
+        bounds.append(f"target_recall={request.nd_settings.target_recall}")
+        bounds.append(f"latency_budget_ms={request.nd_settings.latency_budget_ms}")
+    return ";".join(str(item) for item in bounds if item is not None)
