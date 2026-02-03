@@ -25,6 +25,8 @@ CLI_HELP = """
 │ replay                                                                       │
 │ compare                                                                      │
 │ bench                                                                        │
+│ metrics                                                                      │
+│ debug-bundle                                                                 │
 │ vdb             Vector DB utilities                                          │
 │ config          Configuration utilities                                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯

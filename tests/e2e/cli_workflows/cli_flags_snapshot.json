@@ -3,130 +3,130 @@
     "command": "bench",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "baseline",
         "opts": [
           "--baseline"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": "benchmarks/artifacts",
         "name": "dataset_dir",
         "opts": [
           "--dataset-dir"
         ],
-        "required": false,
-        "default": "benchmarks/artifacts"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 32,
         "name": "dimension",
         "opts": [
           "--dimension"
         ],
-        "required": false,
-        "default": 32
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": false,
         "name": "fail_on_regression",
         "opts": [
           "--fail-on-regression"
         ],
-        "required": false,
-        "default": false
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": "exact",
         "name": "mode",
         "opts": [
           "--mode"
         ],
-        "required": false,
-        "default": "exact"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 256,
         "name": "query_count",
         "opts": [
           "--query-count"
         ],
-        "required": false,
-        "default": 256
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 0.2,
         "name": "regress_threshold",
         "opts": [
           "--regress-threshold"
         ],
-        "required": false,
-        "default": 0.2
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 3,
         "name": "repeats",
         "opts": [
           "--repeats"
         ],
-        "required": false,
-        "default": 3
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 1337,
         "name": "seed",
         "opts": [
           "--seed"
         ],
-        "required": false,
-        "default": 1337
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 1000,
         "name": "size",
         "opts": [
           "--size"
         ],
-        "required": false,
-        "default": 1000
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": "memory",
         "name": "store",
         "opts": [
           "--store"
         ],
-        "required": false,
-        "default": "memory"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store_uri",
         "opts": [
           "--vector-store-uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": 1,
         "name": "warmup",
         "opts": [
           "--warmup"
         ],
-        "required": false,
-        "default": 1
+        "param_type": "option",
+        "required": false
       }
     ]
   },
@@ -138,76 +138,76 @@
     "command": "compare",
     "params": [
       {
-        "param_type": "option",
+        "default": "art-1",
         "name": "artifact_a",
         "opts": [
           "--artifact-a"
         ],
-        "required": false,
-        "default": "art-1"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": "art-1",
         "name": "artifact_b",
         "opts": [
           "--artifact-b"
         ],
-        "required": false,
-        "default": "art-1"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": "deterministic",
         "name": "execution_contract",
         "opts": [
           "--execution-contract"
         ],
-        "required": false,
-        "default": "deterministic"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "execution_intent",
         "opts": [
           "--execution-intent"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       },
       {
-        "param_type": "option",
+        "default": 5,
         "name": "top_k",
         "opts": [
           "--top-k"
         ],
-        "required": false,
-        "default": 5
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector",
         "opts": [
           "--vector"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store_uri",
         "opts": [
           "--vector-store-uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       }
     ]
   },
@@ -220,160 +220,201 @@
     "params": []
   },
   {
-    "command": "execute",
+    "command": "debug-bundle",
     "params": [
       {
-        "param_type": "option",
-        "name": "artifact_id",
+        "default": false,
+        "name": "include_provenance",
         "opts": [
-          "--artifact-id"
+          "--include-provenance"
         ],
-        "required": false,
-        "default": "art-1"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
-        "name": "dry_run",
-        "opts": [
-          "--dry-run"
-        ],
-        "required": false,
-        "default": false
-      },
-      {
-        "param_type": "option",
-        "name": "execution_contract",
-        "opts": [
-          "--execution-contract"
-        ],
-        "required": true,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "execution_intent",
-        "opts": [
-          "--execution-intent"
-        ],
-        "required": true,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "execution_mode",
-        "opts": [
-          "--execution-mode"
-        ],
-        "required": false,
-        "default": "strict"
-      },
-      {
-        "param_type": "option",
-        "name": "explain",
-        "opts": [
-          "--explain"
-        ],
-        "required": false,
-        "default": false
-      },
-      {
-        "param_type": "option",
-        "name": "max_error",
-        "opts": [
-          "--max-error"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "max_latency_ms",
-        "opts": [
-          "--max-latency-ms"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "max_memory_mb",
-        "opts": [
-          "--max-memory-mb"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "randomness_bounded",
-        "opts": [
-          "--randomness-bounded"
-        ],
-        "required": false,
-        "default": false
-      },
-      {
-        "param_type": "option",
-        "name": "randomness_seed",
-        "opts": [
-          "--randomness-seed"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "randomness_sources",
-        "opts": [
-          "--randomness-sources"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "request_text",
-        "opts": [
-          "--request-text"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
-        "name": "top_k",
-        "opts": [
-          "--top-k"
-        ],
-        "required": false,
-        "default": 5
-      },
-      {
-        "param_type": "option",
-        "name": "vector",
-        "opts": [
-          "--vector"
-        ],
-        "required": false,
-        "default": null
-      },
-      {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store_uri",
         "opts": [
           "--vector-store-uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
+    "command": "execute",
+    "params": [
+      {
+        "default": "art-1",
+        "name": "artifact_id",
+        "opts": [
+          "--artifact-id"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "correlation_id",
+        "opts": [
+          "--correlation-id"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "dry_run",
+        "opts": [
+          "--dry-run"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "execution_contract",
+        "opts": [
+          "--execution-contract"
+        ],
+        "param_type": "option",
+        "required": true
+      },
+      {
+        "default": null,
+        "name": "execution_intent",
+        "opts": [
+          "--execution-intent"
+        ],
+        "param_type": "option",
+        "required": true
+      },
+      {
+        "default": "strict",
+        "name": "execution_mode",
+        "opts": [
+          "--execution-mode"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "explain",
+        "opts": [
+          "--explain"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "max_error",
+        "opts": [
+          "--max-error"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "max_latency_ms",
+        "opts": [
+          "--max-latency-ms"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "max_memory_mb",
+        "opts": [
+          "--max-memory-mb"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "randomness_bounded",
+        "opts": [
+          "--randomness-bounded"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "randomness_seed",
+        "opts": [
+          "--randomness-seed"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "randomness_sources",
+        "opts": [
+          "--randomness-sources"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "request_text",
+        "opts": [
+          "--request-text"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 5,
+        "name": "top_k",
+        "opts": [
+          "--top-k"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector",
+        "opts": [
+          "--vector"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "param_type": "option",
+        "required": false
       }
     ]
   },
@@ -381,13 +422,13 @@
     "command": "explain",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "result_id",
         "opts": [
           "--result-id"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       }
     ]
   },
@@ -395,76 +436,85 @@
     "command": "ingest",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "cache_embeddings",
         "opts": [
           "--cache-embeddings"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
+        "default": null,
+        "name": "correlation_id",
+        "opts": [
+          "--correlation-id"
+        ],
         "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
         "name": "doc",
         "opts": [
           "--doc"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       },
       {
-        "param_type": "option",
+        "default": false,
         "name": "dry_run",
         "opts": [
           "--dry-run"
         ],
-        "required": false,
-        "default": false
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "embed_model",
         "opts": [
           "--embed-model"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "embed_provider",
         "opts": [
           "--embed-provider"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector",
         "opts": [
           "--vector"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store_uri",
         "opts": [
           "--vector-store-uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       }
     ]
   },
@@ -476,45 +526,49 @@
     "command": "materialize",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "execution_contract",
         "opts": [
           "--execution-contract"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store_uri",
         "opts": [
           "--vector-store-uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       }
     ]
+  },
+  {
+    "command": "metrics",
+    "params": []
   },
   {
     "command": "replay",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "request_text",
         "opts": [
           "--request-text"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       }
     ]
   },
@@ -522,31 +576,31 @@
     "command": "root",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "config",
         "opts": [
           "--config"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "fmt",
         "opts": [
           "--format"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "output",
         "opts": [
           "--output"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       }
     ]
   },
@@ -558,31 +612,31 @@
     "command": "vdb rebuild",
     "params": [
       {
-        "param_type": "option",
+        "default": "exact",
         "name": "mode",
         "opts": [
           "--mode"
         ],
-        "required": false,
-        "default": "exact"
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "uri",
         "opts": [
           "--uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       }
     ]
   },
@@ -590,22 +644,22 @@
     "command": "vdb status",
     "params": [
       {
-        "param_type": "option",
+        "default": null,
         "name": "uri",
         "opts": [
           "--uri"
         ],
-        "required": false,
-        "default": null
+        "param_type": "option",
+        "required": false
       },
       {
-        "param_type": "option",
+        "default": null,
         "name": "vector_store",
         "opts": [
           "--vector-store"
         ],
-        "required": true,
-        "default": null
+        "param_type": "option",
+        "required": true
       }
     ]
   }

@@ -57,6 +57,7 @@ def test_explain_reconstructs_full_chain():
     assert explanation["artifact"] == artifact
     assert explanation["metric"] == artifact.metric
     assert explanation["score"] == result.score
+    assert explanation["correlation_id"] == result.request_id
     assert explanation["execution_contract"] == artifact.execution_contract
     assert explanation["execution_contract_status"] == "stable"
     assert explanation["replayable"] is artifact.replayable

@@ -52,6 +52,7 @@ def test_explain_provenance_key_order_is_stable() -> None:
         "artifact",
         "metric",
         "score",
+        "correlation_id",
         "execution_contract",
         "execution_contract_status",
         "replayable",

@@ -56,6 +56,7 @@ def test_provenance_contains_only_expected_fields():
         "artifact",
         "metric",
         "score",
+        "correlation_id",
         "execution_contract",
         "execution_contract_status",
         "replayable",
