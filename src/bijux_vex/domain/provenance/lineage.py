@@ -40,10 +40,12 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
     vector_store_backend = None
     vector_store_uri = None
     vector_store_index_params = None
+    vector_store_consistency = None
     if isinstance(vector_store_metadata, dict):
         vector_store_backend = vector_store_metadata.get("backend")
         vector_store_uri = vector_store_metadata.get("uri_redacted")
         vector_store_index_params = vector_store_metadata.get("index_params")
+        vector_store_consistency = vector_store_metadata.get("consistency")
     embedding_metadata = dict(vector.metadata or ())
     plan = artifact.execution_plan
     determinism_hash = determinism_fingerprint(
@@ -79,5 +81,6 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         "vector_store_backend": vector_store_backend,
         "vector_store_uri_redacted": vector_store_uri,
         "vector_store_index_params": vector_store_index_params,
+        "vector_store_consistency": vector_store_consistency,
         "determinism_fingerprint": determinism_hash,
     }

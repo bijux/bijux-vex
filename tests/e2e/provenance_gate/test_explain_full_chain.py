@@ -75,4 +75,5 @@ def test_explain_reconstructs_full_chain():
     assert explanation["vector_store_backend"] is None
     assert explanation["vector_store_uri_redacted"] is None
     assert explanation["vector_store_index_params"] is None
+    assert explanation["vector_store_consistency"] is None
     assert "determinism_fingerprint" in explanation

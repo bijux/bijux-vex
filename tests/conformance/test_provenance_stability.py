@@ -70,6 +70,7 @@ def test_explain_provenance_key_order_is_stable() -> None:
         "vector_store_backend",
         "vector_store_uri_redacted",
         "vector_store_index_params",
+        "vector_store_consistency",
         "determinism_fingerprint",
     ]
     assert list(explain.keys()) == expected_order

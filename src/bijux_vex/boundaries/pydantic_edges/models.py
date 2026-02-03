@@ -127,8 +127,11 @@ class VectorStoreDescriptor(StrictModel):
     available: bool
     supports_exact: bool
     supports_ann: bool
+    delete_supported: bool
+    filtering_supported: bool
     deterministic_exact: bool
     experimental: bool
+    consistency: str | None = None
     version: str | None = None
     notes: str | None = None
 

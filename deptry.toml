@@ -58,3 +58,4 @@ exclude = ["tests", "artifacts", "docs", "api"]
 [tool.deptry.package_module_name_map]
 "faiss-cpu" = "faiss"
 "sentence-transformers" = "sentence_transformers"
+"qdrant-client" = "qdrant_client"

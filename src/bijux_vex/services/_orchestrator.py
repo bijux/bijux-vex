@@ -205,8 +205,11 @@ class Orchestrator:
                 "available": desc.available,
                 "supports_exact": desc.supports_exact,
                 "supports_ann": desc.supports_ann,
+                "delete_supported": desc.delete_supported,
+                "filtering_supported": desc.filtering_supported,
                 "deterministic_exact": desc.deterministic_exact,
                 "experimental": desc.experimental,
+                "consistency": desc.consistency,
                 "version": desc.version,
                 "notes": desc.notes,
             }

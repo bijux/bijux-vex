@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover - optional dependency
 import numpy as np
 
 from bijux_vex.core.errors import (
+    BackendCapabilityError,
     BackendUnavailableError,
     CorruptArtifactError,
     DeterminismViolationError,
@@ -97,6 +98,10 @@ class FaissVectorStoreAdapter(VectorStoreAdapter):
         self._index_kind = self._resolve_index_kind(self._options.get("index_type"))
 
     @property
+    def options(self) -> dict[str, str]:
+        return dict(self._options)
+
+    @property
     def index_params(self) -> dict[str, object]:
         return {
             "type": self._index_type_name(),
@@ -169,6 +174,10 @@ class FaissVectorStoreAdapter(VectorStoreAdapter):
     ) -> list[tuple[str, float]]:
         if self._index is None or self._index.ntotal == 0:
             return []
+        if "filter" in self._options:
+            raise BackendCapabilityError(
+                message="Filtering is not supported by the FAISS adapter"
+            )
         self._enforce_mode(mode)
         array = np.asarray([vector], dtype="float32")
         distances, indices = self._index.search(array, int(k))

@@ -7,9 +7,10 @@ from typing import Any
 
 from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.determinism import classify_execution
-from bijux_vex.core.errors import ValidationError
+from bijux_vex.core.errors import BackendCapabilityError, ValidationError
 from bijux_vex.core.types import Chunk, Document, ExecutionRequest, Result, Vector
 from bijux_vex.domain.execution_requests import scoring
+from bijux_vex.infra.adapters.vectorstore_metadata import build_vectorstore_metadata
 from bijux_vex.infra.adapters.vectorstore_registry import VectorStoreResolution
 
 
@@ -28,8 +29,11 @@ class VectorStoreVectorSource(VectorSource):
             "index_params": index_params,
             "supports_exact": self._resolved.descriptor.supports_exact,
             "supports_ann": self._resolved.descriptor.supports_ann,
+            "delete_supported": self._resolved.descriptor.delete_supported,
+            "filtering_supported": self._resolved.descriptor.filtering_supported,
             "deterministic_exact": self._resolved.descriptor.deterministic_exact,
             "experimental": self._resolved.descriptor.experimental,
+            "consistency": self._resolved.descriptor.consistency,
         }
 
     # Document operations
@@ -63,19 +67,15 @@ class VectorStoreVectorSource(VectorSource):
         self._base.put_vector(tx, vector)
         if getattr(self._adapter, "is_noop", False):
             return
-        metadata = {
-            "vector_id": vector.vector_id,
-            "chunk_id": vector.chunk_id,
-            "dimension": str(vector.dimension),
-            "model": vector.model or "",
-        }
-        if vector.metadata:
-            if isinstance(vector.metadata, dict):
-                items = list(vector.metadata.items())
-            else:
-                items = list(vector.metadata)
-            for key, value in items:
-                metadata[str(key)] = str(value)
+        chunk = self._base.get_chunk(vector.chunk_id)
+        document_id = chunk.document_id if chunk else ""
+        metadata = build_vectorstore_metadata(
+            vector=vector,
+            document_id=document_id,
+            source_uri=None,
+            tags=None,
+        )
+        metadata["vector_id"] = vector.vector_id
         self._adapter.insert([list(vector.values)], metadata=[metadata])
 
     def get_vector(self, vector_id: str) -> Vector | None:
@@ -89,6 +89,17 @@ class VectorStoreVectorSource(VectorSource):
             raise ValidationError(message="execution vector required")
         if getattr(self._adapter, "is_noop", False):
             return self._base.query(artifact_id, request)
+        options = getattr(self._adapter, "options", None)
+        if options is None:
+            options = getattr(self._adapter, "_options", None)
+        if (
+            isinstance(options, dict)
+            and "filter" in options
+            and not self._resolved.descriptor.filtering_supported
+        ):
+            raise BackendCapabilityError(
+                message="Vector store filtering requested but backend does not support filters"
+            )
         classify_execution(
             contract=request.execution_contract,
             randomness=None,
@@ -134,6 +145,10 @@ class VectorStoreVectorSource(VectorSource):
         self._base.delete_vector(tx, vector_id)
         if getattr(self._adapter, "is_noop", False):
             return
+        if not self._resolved.descriptor.delete_supported:
+            raise BackendCapabilityError(
+                message="Vector store backend does not support deletes"
+            )
         self._adapter.delete([vector_id])
 
 

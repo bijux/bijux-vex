@@ -19,8 +19,11 @@ class VectorStoreDescriptor:
     available: bool
     supports_exact: bool
     supports_ann: bool
+    delete_supported: bool
+    filtering_supported: bool
     deterministic_exact: bool
     experimental: bool
+    consistency: str | None = None
     notes: str | None = None
     version: str | None = None
 
@@ -153,8 +156,11 @@ class VectorStoreRegistry:
             available=True,
             supports_exact=descriptor.supports_exact,
             supports_ann=descriptor.supports_ann,
+            delete_supported=descriptor.delete_supported,
+            filtering_supported=descriptor.filtering_supported,
             deterministic_exact=descriptor.deterministic_exact,
             experimental=descriptor.experimental,
+            consistency=descriptor.consistency,
             notes=notes,
             version=version,
         )
@@ -192,8 +198,11 @@ class VectorStoreRegistry:
                     available=available,
                     supports_exact=descriptor.supports_exact,
                     supports_ann=descriptor.supports_ann,
+                    delete_supported=descriptor.delete_supported,
+                    filtering_supported=descriptor.filtering_supported,
                     deterministic_exact=descriptor.deterministic_exact,
                     experimental=descriptor.experimental,
+                    consistency=descriptor.consistency,
                     notes=notes,
                     version=version,
                 )
@@ -217,8 +226,11 @@ VECTOR_STORES.register(
         available=True,
         supports_exact=True,
         supports_ann=False,
+        delete_supported=True,
+        filtering_supported=False,
         deterministic_exact=True,
         experimental=False,
+        consistency="read_after_write",
         notes="no-op adapter; uses local vector source",
     ),
     factory=_noop_factory,
@@ -235,8 +247,11 @@ VECTOR_STORES.register(
         available=True,
         supports_exact=True,
         supports_ann=False,
+        delete_supported=True,
+        filtering_supported=False,
         deterministic_exact=True,
         experimental=False,
+        consistency="read_after_write",
         notes="alias for local storage (no-op adapter)",
     ),
     factory=_noop_factory,
@@ -265,6 +280,23 @@ def _faiss_factory(
     return FaissVectorStoreAdapter(uri=uri, options=options)
 
 
+def _qdrant_available() -> tuple[bool, str | None, str | None]:
+    try:
+        import qdrant_client
+
+        return True, getattr(qdrant_client, "__version__", None), None
+    except Exception:
+        return False, None, "qdrant-client not installed"
+
+
+def _qdrant_factory(
+    uri: str | None, options: Mapping[str, str] | None
+) -> VectorStoreAdapter:
+    from bijux_vex.infra.adapters.qdrant.adapter import QdrantVectorStoreAdapter
+
+    return QdrantVectorStoreAdapter(uri=uri, options=options)
+
+
 VECTOR_STORES.register(
     "faiss",
     descriptor=VectorStoreDescriptor(
@@ -272,8 +304,11 @@ VECTOR_STORES.register(
         available=False,
         supports_exact=True,
         supports_ann=True,
+        delete_supported=True,
+        filtering_supported=False,
         deterministic_exact=True,
         experimental=True,
+        consistency="read_after_write",
         notes="local FAISS index (exact or ANN depending on index_type)",
     ),
     factory=_faiss_factory,
@@ -283,6 +318,28 @@ VECTOR_STORES.register(
         approximation=False,
     ),
     availability=_faiss_available,
+)
+VECTOR_STORES.register(
+    "qdrant",
+    descriptor=VectorStoreDescriptor(
+        name="qdrant",
+        available=False,
+        supports_exact=True,
+        supports_ann=True,
+        delete_supported=True,
+        filtering_supported=True,
+        deterministic_exact=False,
+        experimental=True,
+        consistency="eventual",
+        notes="remote Qdrant vector store",
+    ),
+    factory=_qdrant_factory,
+    contract=PluginContract(
+        determinism="model_dependent",
+        randomness_sources=("index_state",),
+        approximation=True,
+    ),
+    availability=_qdrant_available,
 )
 
 load_entrypoints("bijux_vex.vectorstores", VECTOR_STORES)

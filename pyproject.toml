@@ -49,10 +49,12 @@ embeddings = [
 vectorstores = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
+  "qdrant-client>=1.9.0,<2.0",
 ]
 vdb = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
+  "qdrant-client>=1.9.0,<2.0",
 ]
 dev = [
   "types-PyYAML>=6.0.12,<7.0",
