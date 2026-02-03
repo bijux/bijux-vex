@@ -636,6 +636,18 @@ def execute(
     nd_latency_budget_ms: int | None = typer.Option(
         None, "--nd-latency-budget-ms", help="ND latency budget in ms"
     ),
+    nd_witness_rate: float | None = typer.Option(
+        None, "--nd-witness-rate", help="Fraction of ND runs to witness (0-1]"
+    ),
+    nd_witness_sample_k: int | None = typer.Option(
+        None, "--nd-witness-sample-k", help="Exact witness top-k sample size"
+    ),
+    compare_to: str | None = typer.Option(
+        None, "--compare-to", help="Compare ND run to exact (exact)"
+    ),
+    compare_artifact_id: str | None = typer.Option(
+        None, "--compare-artifact-id", help="Deterministic artifact id for compare"
+    ),
     correlation_id: str | None = typer.Option(None, "--correlation-id"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     explain: bool = typer.Option(False, "--explain"),
@@ -676,6 +688,8 @@ def execute(
             nd_profile=nd_profile,
             nd_target_recall=nd_target_recall,
             nd_latency_budget_ms=nd_latency_budget_ms,
+            nd_witness_rate=nd_witness_rate,
+            nd_witness_sample_k=nd_witness_sample_k,
             correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
@@ -708,8 +722,22 @@ def execute(
             }
             _emit(ctx, output)
             return
+        if compare_to is not None and compare_to != "exact":
+            raise ValidationError(message="compare-to supports only 'exact'")
+        if compare_to == "exact" and not compare_artifact_id:
+            raise ValidationError(
+                message="compare-to exact requires --compare-artifact-id"
+            )
         engine = VectorExecutionEngine(config=config)
         result = engine.execute(req)
+        if compare_to == "exact":
+            comparison = engine.compare(
+                req,
+                artifact_a_id=artifact_id,
+                artifact_b_id=compare_artifact_id,
+            )
+            _emit(ctx, {"execution": result, "compare": comparison})
+            return
         if explain:
             results = result.get("results", [])
             if not results:
