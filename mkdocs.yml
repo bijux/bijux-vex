@@ -40,6 +40,7 @@ nav:
       - Not a Vector DB: user/not_a_vdb.md
       - BYO vs Embeddings: user/byo_vectors_vs_embeddings.md
       - Determinism Guide: user/determinism_guide.md
+      - ND Production Guide: guides/nd_production.md
       - Operator Guide: user/operator_guide.md
       - Security Guide: user/security_guide.md
       - Vector Stores:

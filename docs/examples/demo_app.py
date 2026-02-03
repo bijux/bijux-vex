@@ -17,8 +17,7 @@ def main() -> None:
         workdir_path = Path(workdir)
         os.environ["BIJUX_VEX_STATE_PATH"] = str(workdir_path / "session.sqlite")
         os.environ["BIJUX_VEX_RUN_DIR"] = str(workdir_path / "runs")
-        os.environ["BIJUX_VEX_BACKEND"] = "hnsw"
-        os.environ["BIJUX_VEX_HNSW_PATH"] = str(workdir_path / "hnsw_index")
+        os.environ["BIJUX_VEX_BACKEND"] = "sqlite"
         index_path = str(workdir_path / "demo.faiss")
 
         client = TestClient(app)
