@@ -70,13 +70,13 @@ bijux vex compare --vector "[0,1,0]" --execution-intent exact_validation
 We use one term per concept: **replayable** (deterministic, bit-identical), **audited** (non-deterministic with envelopes), **stable** (supported and frozen), **outcome-variable** (bounded divergence). Avoid “reproducible” or “supported” as stand-ins.
 
 ## Public surfaces
-- **CLI (Typer)**: `create`, `ingest`, `materialize`, `execute`, `explain`, `replay`, `compare`, `list-artifacts`.
+- **CLI (Typer)**: `create`, `ingest`, `materialize`, `execute`, `explain`, `replay`, `compare`, `list-artifacts`, `vdb`.
 - **API (FastAPI)**: versioned under `bijux_vex.api.v1` with frozen OpenAPI (`api/v1/openapi.v1.json`), endpoints mirror CLI verbs.
 - **Core types**: `ExecutionContract`, `ExecutionRequest`, `ExecutionArtifact`, `ExecutionResources`, `ApproximationReport`, `RandomnessProfile`.
 
 ## Non-goals checksum
 ❌ Not a VDB or search service.  
-❌ Not an ML/embedding framework.  
+❌ Not an ML framework; embeddings are optional and explicit.  
 ❌ Not a serving layer with SLAs.  
 ❌ Not a “best-effort” ANN wrapper—contracts must be explicit.
 

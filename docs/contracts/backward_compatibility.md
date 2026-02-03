@@ -34,7 +34,7 @@ They are contractually frozen unless a new major version is released.
 
 ### CLI outputs
 - `list-artifacts` → `artifacts`
-- `capabilities` → `backend`, `contracts`, `deterministic_query`, `supports_ann`, `replayable`, `metrics`, `max_vector_size`, `isolation_level`, `execution_modes`, `ann_status`, `storage_backends`
+- `capabilities` → `backend`, `contracts`, `deterministic_query`, `supports_ann`, `replayable`, `metrics`, `max_vector_size`, `isolation_level`, `execution_modes`, `ann_status`, `storage_backends`, `vector_stores`
 - `ingest` → `ingested`
 - `materialize` → `artifact_id`, `execution_contract`, `execution_contract_status`, `replayable`
 - `execute` → `results`, `execution_contract`, `execution_contract_status`, `replayable`, `execution_id`

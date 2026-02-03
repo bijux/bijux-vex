@@ -34,6 +34,7 @@ nav:
   - User:
       - Start Here: user/start_here.md
       - Not a Vector DB: user/not_a_vdb.md
+      - BYO vs Embeddings: user/byo_vectors_vs_embeddings.md
       - Misuse Patterns: user/misuse.md
       - External Misuse: user/external_misuse.md
   - Concepts:

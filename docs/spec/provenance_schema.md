@@ -8,9 +8,15 @@ The provenance output may include:
 - `embedding_determinism`
 - `embedding_seed`
 - `embedding_model_version`
+- `embedding_provider`
+- `embedding_device`
+- `embedding_dtype`
+- `vector_store_backend`
+- `vector_store_uri_redacted`
+- `vector_store_index_params`
 - `execution_contract_status` (stable vs experimental)
 
-These fields are optional today because embedding generation is not implemented yet, but the schema is reserved.
+These fields are optional today because not every run uses embeddings or a vector store, but the schema is reserved.
 
 ## Where provenance appears
 - `explain_result` output (CLI/API `explain` flow)

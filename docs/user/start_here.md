@@ -23,3 +23,4 @@ Vector execution often hides determinism assumptions. bijux-vex makes execution 
 3) Examples: [examples/overview.md](../examples/overview.md) — deterministic and ANN flows.
 4) API: [api/index.md](../api/index.md) and the canonical schema [api/v1/schema.yaml](https://github.com/bijux/bijux-vex/blob/main/api/v1/schema.yaml).
 5) Not a vector DB: [user/not_a_vdb.md](not_a_vdb.md).
+6) BYO vectors vs auto-embeddings: [user/byo_vectors_vs_embeddings.md](byo_vectors_vs_embeddings.md).

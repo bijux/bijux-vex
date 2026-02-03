@@ -15,6 +15,7 @@ The API is versioned and contract-driven. This page is descriptive; the canonica
 - Consult `api/v1/schema.yaml` to generate clients or validate requests/responses.
 - CLI mirror: ingest → materialize → execute → explain → replay → compare.
 - API endpoints: `/ingest` → `/artifact` → `/execute` → `/explain` → `/replay` (no `/compare` endpoint in v1).
+- Optional routing fields: `vector_store`, `vector_store_uri` (ingest/execute/artifact) and `embed_model` (ingest).
 - For non-deterministic executions, supply execution budgets and randomness profiles as required by the schema.
 
 ## References

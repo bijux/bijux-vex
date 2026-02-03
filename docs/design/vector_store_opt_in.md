@@ -4,12 +4,12 @@ This design prevents silent persistence. Vector store usage must be explicit in 
 
 ## CLI
 - Flag: `--vector-store <name>`
-- No default value.
-- CLI must refuse execution or materialization if a vector store is required but not specified.
+- Default is local memory when the flag is omitted.
+- External vector stores are only used when `--vector-store` is set.
 
 ## API
 - Field: `vector_store` in execution/materialization payloads.
-- No default value; omission means **no external store**.
+- Omission means **no external store** (local memory only).
 
 ## Behavior
 - If `vector_store` is set, the adapter is used for persistence/query.
