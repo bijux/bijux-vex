@@ -213,6 +213,9 @@ def _build_nd_plan(
     reproducibility = _nd_reproducibility_bounds(
         artifact, request, randomness, ann_runner
     )
+    steps: tuple[str, ...] = ("plan_nondeterministic", "execute_ann")
+    if request.nd_settings is None or request.nd_settings.two_stage:
+        steps = ("plan_nondeterministic", "execute_ann", "rescore_exact")
     plan = ExecutionPlan(
         algorithm="ann_approximate",
         contract=request.execution_contract,
@@ -220,7 +223,7 @@ def _build_nd_plan(
         scoring_fn=artifact.metric,
         randomness_sources=randomness_sources,
         reproducibility_bounds=reproducibility,
-        steps=("plan_nondeterministic", "execute_ann"),
+        steps=steps,
     )
     return plan, "ann_approximate", randomness
 

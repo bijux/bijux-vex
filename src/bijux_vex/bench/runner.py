@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import Path
 import platform
 import statistics
 import time
 from typing import TYPE_CHECKING, Any, cast
+import uuid
+
+import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover
     import numpy as np
@@ -23,6 +27,7 @@ from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
+from bijux_vex.infra.adapters.sqlite.backend import sqlite_backend
 from bijux_vex.services.execution_engine import VectorExecutionEngine
 
 
@@ -54,14 +59,15 @@ def _now_ms() -> float:
 
 
 def _build_engine(
-    store_backend: str | None, store_uri: str | None
+    store_backend: str | None, store_uri: str | None, state_path: str | None
 ) -> VectorExecutionEngine:
     config = None
     if store_backend:
         config = ExecutionConfig(
             vector_store=VectorStoreConfig(backend=store_backend, uri=store_uri)
         )
-    return VectorExecutionEngine(config=config)
+    backend = sqlite_backend(state_path) if state_path else None
+    return VectorExecutionEngine(config=config, backend=backend)
 
 
 def _ingest(
@@ -74,8 +80,15 @@ def _ingest(
     engine.ingest(req)
 
 
-def _materialize(engine: VectorExecutionEngine, contract: ExecutionContract) -> str:
-    result = engine.materialize(ExecutionArtifactRequest(execution_contract=contract))
+def _materialize(
+    engine: VectorExecutionEngine, contract: ExecutionContract, index_mode: str | None
+) -> str:
+    result = engine.materialize(
+        ExecutionArtifactRequest(
+            execution_contract=contract,
+            index_mode=index_mode,
+        )
+    )
     return str(result["artifact_id"])
 
 
@@ -135,6 +148,19 @@ def _execute_queries(
     )
 
 
+def _exact_top_k(
+    vectors: np.ndarray, vector_ids: list[str], query: np.ndarray, top_k: int
+) -> list[str]:
+    if len(vector_ids) == 0 or top_k <= 0:
+        return []
+    diffs = vectors - query
+    scores = (diffs * diffs).sum(axis=1)
+    k = min(top_k, scores.shape[0])
+    candidate_idx = np.argpartition(scores, k - 1)[:k]
+    ordered = sorted(candidate_idx, key=lambda idx: (scores[idx], vector_ids[idx]))
+    return [vector_ids[idx] for idx in ordered]
+
+
 def run_benchmark(
     *,
     documents: list[str],
@@ -174,13 +200,13 @@ def run_benchmark(
         )
     )
 
-    engine = _build_engine(store_backend, store_uri)
+    state_dir = Path("benchmarks") / "artifacts"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_path = str(state_dir / f"bench-{uuid.uuid4().hex}.sqlite")
+    engine = _build_engine(store_backend, store_uri, state_path)
     _ingest(engine, documents, vectors)
-    artifact_id = _materialize(engine, contract)
-    exact_artifact_id = None
-    if mode == "ann":
-        exact_artifact_id = _materialize(engine, ExecutionContract.DETERMINISTIC)
-
+    index_mode = "ann" if mode == "ann" else "exact"
+    artifact_id = _materialize(engine, contract, index_mode)
     warmup_run = _execute_queries(
         engine,
         artifact_id,
@@ -230,11 +256,19 @@ def run_benchmark(
             "machine": platform.machine(),
         },
     }
-    if mode == "ann" and exact_artifact_id:
-        overlaps = []
-        instabilities = []
-        recall_deltas = []
-        for query in queries:
+    if mode == "ann":
+        quality_queries = queries[: min(len(queries), 32)]
+        vectors_list = list(engine.stores.vectors.list_vectors())
+        vector_ids = [vec.vector_id for vec in vectors_list]
+        vector_values = (
+            vectors
+            if vectors.shape[0] == len(vector_ids)
+            else vectors[: len(vector_ids)]
+        )
+        overlaps: list[float] = []
+        instabilities: list[float] = []
+        recall_deltas: list[float] = []
+        for query in quality_queries:
             payload = ExecutionRequestPayload(
                 request_text=None,
                 vector=tuple(float(x) for x in query.tolist()),
@@ -245,14 +279,28 @@ def run_benchmark(
                 execution_budget=budget,
                 randomness_profile=randomness,
             )
-            diff = engine.compare(
-                payload,
-                artifact_a_id=artifact_id,
-                artifact_b_id=exact_artifact_id,
+            nd_result = engine.execute(payload)
+            nd_ids = [str(x) for x in cast(list[str], nd_result["results"])]
+            exact_ids = _exact_top_k(vector_values, vector_ids, query, top_k)
+            set_a = set(nd_ids)
+            set_b = set(exact_ids)
+            overlap = set_a & set_b
+            union = set_a | set_b
+            overlap_ratio = len(overlap) / len(union) if union else 1.0
+            recall_delta = (len(overlap) / len(set_a) if set_a else 1.0) - (
+                len(overlap) / len(set_b) if set_b else 1.0
             )
-            overlaps.append(float(cast(float, diff["overlap_ratio"])))
-            instabilities.append(float(cast(float, diff["rank_instability"])))
-            recall_deltas.append(float(cast(float, diff["recall_delta"])))
+            rank_instability = 1.0
+            if overlap:
+                total = 0
+                for vid in overlap:
+                    total += abs(nd_ids.index(vid) - exact_ids.index(vid))
+                rank_instability = total / (
+                    len(overlap) * max(len(nd_ids), len(exact_ids))
+                )
+            overlaps.append(float(overlap_ratio))
+            instabilities.append(float(rank_instability))
+            recall_deltas.append(float(recall_delta))
         mean_overlap = statistics.fmean(overlaps) if overlaps else 0.0
         mean_instability = statistics.fmean(instabilities) if instabilities else 0.0
         mean_recall_delta = statistics.fmean(recall_deltas) if recall_deltas else 0.0
