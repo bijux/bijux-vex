@@ -46,6 +46,9 @@ llm = [
 embeddings = [
   "sentence-transformers>=2.7.0,<3.0",
 ]
+nd-hnsw = [
+  "hnswlib>=0.8.0,<1.0",
+]
 vectorstores = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
