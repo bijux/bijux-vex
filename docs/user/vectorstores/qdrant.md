@@ -23,6 +23,17 @@ python -m bijux_vex.boundaries.cli.app ingest \
 - Requires a running Qdrant instance.
 - Consistency is backend-dependent (see capabilities output).
 
+## Recommended Use Cases
+
+- Remote, shared vector storage.
+- Workloads that need filtering or metadata queries.
+- ANN at scale with explicit budgets.
+
+## Gotchas
+
+- Network latency affects ND budgets.
+- Ensure credentials are redacted in logs and provenance.
+
 ## Operational Tips
 
 - Use `bijux vex vdb status` to validate connectivity.

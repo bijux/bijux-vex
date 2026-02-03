@@ -17,3 +17,12 @@ Memory is the default when no `--vector-store` is provided.
 
 - Data is lost when the process exits.
 - Not suitable for large corpora.
+
+## Recommended Use Cases
+
+- Local testing and CI.
+- Deterministic exact validation.
+
+## Gotchas
+
+- No persistence. Replay across restarts is not possible.

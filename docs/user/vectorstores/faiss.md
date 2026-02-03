@@ -25,6 +25,17 @@ python -m bijux_vex.boundaries.cli.app ingest \
 - Filtering is not supported.
 - Requires local disk for index persistence.
 
+## Recommended Use Cases
+
+- Local, single-node workloads.
+- Deterministic exact execution with stable storage.
+- ND experiments when ANN is explicitly configured.
+
+## Gotchas
+
+- Index parameters must match execution mode.
+- Rebuild after heavy delete workloads to avoid drift.
+
 ## Operational Tips
 
 - Use `bijux vex vdb status` to inspect index metadata.
