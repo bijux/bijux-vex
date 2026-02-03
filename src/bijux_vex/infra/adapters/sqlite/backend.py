@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 import json
 import sqlite3
+import threading
 from typing import NamedTuple
 
 from bijux_vex.contracts.authz import AllowAllAuthz, Authz
@@ -91,8 +92,9 @@ def _ensure_vector_columns(conn: sqlite3.Connection) -> None:
 
 
 class SQLiteTx(Tx):
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, lock: threading.RLock):
         self._conn = conn
+        self._lock = lock
         self._active = True
         self._entered = False
 
@@ -101,8 +103,10 @@ class SQLiteTx(Tx):
         return "sqlite-tx"
 
     def __enter__(self) -> Tx:
+        self._lock.acquire()
         conn_id = id(self._conn)
         if conn_id in ACTIVE_CONNECTIONS:
+            self._lock.release()
             raise AtomicityViolationError(message="Nested Tx is not allowed")
         self._conn.execute("BEGIN")
         ACTIVE_CONNECTIONS.add(conn_id)
@@ -114,95 +118,118 @@ class SQLiteTx(Tx):
             raise AtomicityViolationError(message="Tx must be entered before commit")
         if not self._active:
             raise AtomicityViolationError(message="Tx already finished")
-        self._conn.commit()
-        self._active = False
-        ACTIVE_CONNECTIONS.discard(id(self._conn))
+        try:
+            self._conn.commit()
+            self._active = False
+            ACTIVE_CONNECTIONS.discard(id(self._conn))
+        finally:
+            self._lock.release()
 
     def abort(self) -> None:
         if not self._entered:
             raise AtomicityViolationError(message="Tx must be entered before abort")
         if not self._active:
             raise AtomicityViolationError(message="Tx already finished")
-        self._conn.rollback()
-        self._active = False
-        ACTIVE_CONNECTIONS.discard(id(self._conn))
+        try:
+            self._conn.rollback()
+            self._active = False
+            ACTIVE_CONNECTIONS.discard(id(self._conn))
+        finally:
+            self._lock.release()
 
 
 class SQLiteVectorSource(VectorSource):
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, lock: threading.RLock):
         self._conn = conn
+        self._lock = lock
         self._metric_cache: dict[str, str] = {}
         self._artifact_cache: dict[str, ExecutionArtifact] = {}
         self._vector_cache: list[Vector] | None = None
 
     # Documents
     def put_document(self, tx: Tx, document: Document) -> None:
-        self._conn.execute(
-            "REPLACE INTO documents(id, text, source, version) VALUES(?,?,?,?)",
-            (document.document_id, document.text, document.source, document.version),
-        )
+        with self._lock:
+            self._conn.execute(
+                "REPLACE INTO documents(id, text, source, version) VALUES(?,?,?,?)",
+                (
+                    document.document_id,
+                    document.text,
+                    document.source,
+                    document.version,
+                ),
+            )
 
     def get_document(self, document_id: str) -> Document | None:
-        row = self._conn.execute(
-            "SELECT id, text, source, version FROM documents WHERE id=?", (document_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, text, source, version FROM documents WHERE id=?",
+                (document_id,),
+            ).fetchone()
         if not row:
             return None
         return Document(document_id=row[0], text=row[1], source=row[2], version=row[3])
 
     def list_documents(self) -> Iterable[Document]:
-        rows = self._conn.execute(
-            "SELECT id, text, source, version FROM documents ORDER BY id"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, text, source, version FROM documents ORDER BY id"
+            ).fetchall()
         return [
             Document(document_id=r[0], text=r[1], source=r[2], version=r[3])
             for r in rows
         ]
 
     def delete_document(self, tx: Tx, document_id: str) -> None:
-        self._conn.execute("DELETE FROM documents WHERE id=?", (document_id,))
+        with self._lock:
+            self._conn.execute("DELETE FROM documents WHERE id=?", (document_id,))
 
     # Chunks
     def put_chunk(self, tx: Tx, chunk: Chunk) -> None:
-        self._conn.execute(
-            "REPLACE INTO chunks(id, document_id, text, ordinal) VALUES(?,?,?,?)",
-            (chunk.chunk_id, chunk.document_id, chunk.text, chunk.ordinal),
-        )
+        with self._lock:
+            self._conn.execute(
+                "REPLACE INTO chunks(id, document_id, text, ordinal) VALUES(?,?,?,?)",
+                (chunk.chunk_id, chunk.document_id, chunk.text, chunk.ordinal),
+            )
 
     def get_chunk(self, chunk_id: str) -> Chunk | None:
-        row = self._conn.execute(
-            "SELECT id, document_id, text, ordinal FROM chunks WHERE id=?", (chunk_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, document_id, text, ordinal FROM chunks WHERE id=?",
+                (chunk_id,),
+            ).fetchone()
         if not row:
             return None
         return Chunk(chunk_id=row[0], document_id=row[1], text=row[2], ordinal=row[3])
 
     def list_chunks(self, document_id: str | None = None) -> Iterable[Chunk]:
-        if document_id:
-            rows = self._conn.execute(
-                "SELECT id, document_id, text, ordinal FROM chunks WHERE document_id=? ORDER BY id",
-                (document_id,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT id, document_id, text, ordinal FROM chunks ORDER BY id"
-            ).fetchall()
+        with self._lock:
+            if document_id:
+                rows = self._conn.execute(
+                    "SELECT id, document_id, text, ordinal FROM chunks WHERE document_id=? ORDER BY id",
+                    (document_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT id, document_id, text, ordinal FROM chunks ORDER BY id"
+                ).fetchall()
         return [
             Chunk(chunk_id=r[0], document_id=r[1], text=r[2], ordinal=r[3])
             for r in rows
         ]
 
     def delete_chunk(self, tx: Tx, chunk_id: str) -> None:
-        self._conn.execute("DELETE FROM chunks WHERE id=?", (chunk_id,))
+        with self._lock:
+            self._conn.execute("DELETE FROM chunks WHERE id=?", (chunk_id,))
 
     def _load_artifact(self, artifact_id: str) -> ExecutionArtifact:
         cached = self._artifact_cache.get(artifact_id)
         if cached:
             return cached
-        row = self._conn.execute(
-            "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params, replayable FROM artifacts WHERE id=?",
-            (artifact_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params, replayable FROM artifacts WHERE id=?",
+                (artifact_id,),
+            ).fetchone()
         if not row:
             raise NotFoundError(message=f"Execution artifact {artifact_id} not found")
         build_params_raw = row[8] or "[]"
@@ -223,24 +250,26 @@ class SQLiteVectorSource(VectorSource):
         return artifact
 
     def put_vector(self, tx: Tx, vector: Vector) -> None:
-        self._conn.execute(
-            "REPLACE INTO vectors(id, chunk_id, dim, vec_values, model, metadata) VALUES(?,?,?,?,?,?)",
-            (
-                vector.vector_id,
-                vector.chunk_id,
-                vector.dimension,
-                json_dumps(vector.values),
-                vector.model,
-                json_dumps_meta(vector.metadata),
-            ),
-        )
+        with self._lock:
+            self._conn.execute(
+                "REPLACE INTO vectors(id, chunk_id, dim, vec_values, model, metadata) VALUES(?,?,?,?,?,?)",
+                (
+                    vector.vector_id,
+                    vector.chunk_id,
+                    vector.dimension,
+                    json_dumps(vector.values),
+                    vector.model,
+                    json_dumps_meta(vector.metadata),
+                ),
+            )
         self._vector_cache = None
 
     def get_vector(self, vector_id: str) -> Vector | None:
-        row = self._conn.execute(
-            "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE id=?",
-            (vector_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE id=?",
+                (vector_id,),
+            ).fetchone()
         if not row:
             return None
         values = tuple(json_loads(row[3]))
@@ -256,15 +285,16 @@ class SQLiteVectorSource(VectorSource):
     def list_vectors(self, chunk_id: str | None = None) -> Iterable[Vector]:
         if chunk_id is None and self._vector_cache is not None:
             return list(self._vector_cache)
-        if chunk_id:
-            rows = self._conn.execute(
-                "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE chunk_id=? ORDER BY id",
-                (chunk_id,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors ORDER BY id"
-            ).fetchall()
+        with self._lock:
+            if chunk_id:
+                rows = self._conn.execute(
+                    "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE chunk_id=? ORDER BY id",
+                    (chunk_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors ORDER BY id"
+                ).fetchall()
         vectors = [
             Vector(
                 vector_id=r[0],
@@ -289,10 +319,11 @@ class SQLiteVectorSource(VectorSource):
             raise InvariantError(
                 message="Execution contract does not match artifact execution contract"
             )
-        rows = self._conn.execute(
-            "SELECT v.id, v.chunk_id, v.dim, v.vec_values, c.document_id "
-            "FROM vectors v LEFT JOIN chunks c ON v.chunk_id = c.id ORDER BY v.id"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT v.id, v.chunk_id, v.dim, v.vec_values, c.document_id "
+                "FROM vectors v LEFT JOIN chunks c ON v.chunk_id = c.id ORDER BY v.id"
+            ).fetchall()
         scored: list[Result] = []
         req_vec = request.vector
         for row in rows:
@@ -327,7 +358,8 @@ class SQLiteVectorSource(VectorSource):
         return scored[: request.top_k]
 
     def delete_vector(self, tx: Tx, vector_id: str) -> None:
-        self._conn.execute("DELETE FROM vectors WHERE id=?", (vector_id,))
+        with self._lock:
+            self._conn.execute("DELETE FROM vectors WHERE id=?", (vector_id,))
         self._vector_cache = None
 
 
@@ -335,42 +367,50 @@ class SQLiteExecutionLedger(ExecutionLedger):
     MAX_ARTIFACTS = 1000
     MAX_RESULTS = 5000
 
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, lock: threading.RLock):
         self._conn = conn
+        self._lock = lock
 
     def put_artifact(self, tx: Tx, artifact: ExecutionArtifact) -> None:
-        existing = self.get_artifact(artifact.artifact_id)
-        if existing and existing.execution_contract is not artifact.execution_contract:
-            raise InvariantError(
-                message="Cannot overwrite artifact with different execution contract"
-            )
-        if existing is None:
-            count = self._conn.execute("SELECT COUNT(*) FROM artifacts").fetchone()[0]
-            if count >= self.MAX_ARTIFACTS:
+        with self._lock:
+            existing = self.get_artifact(artifact.artifact_id)
+            if (
+                existing
+                and existing.execution_contract is not artifact.execution_contract
+            ):
                 raise InvariantError(
-                    message="Artifact retention limit exceeded; compact or delete artifacts"
+                    message="Cannot overwrite artifact with different execution contract"
                 )
-        self._conn.execute(
-            "REPLACE INTO artifacts(id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params, replayable) VALUES(?,?,?,?,?,?,?,?,?,?)",
-            (
-                artifact.artifact_id,
-                artifact.corpus_fingerprint,
-                artifact.vector_fingerprint,
-                artifact.metric,
-                artifact.scoring_version,
-                artifact.execution_contract.value,
-                artifact.execution_id,
-                artifact.schema_version,
-                json.dumps(list(artifact.build_params)),
-                1 if artifact.replayable else 0,
-            ),
-        )
+            if existing is None:
+                count = self._conn.execute("SELECT COUNT(*) FROM artifacts").fetchone()[
+                    0
+                ]
+                if count >= self.MAX_ARTIFACTS:
+                    raise InvariantError(
+                        message="Artifact retention limit exceeded; compact or delete artifacts"
+                    )
+            self._conn.execute(
+                "REPLACE INTO artifacts(id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params, replayable) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (
+                    artifact.artifact_id,
+                    artifact.corpus_fingerprint,
+                    artifact.vector_fingerprint,
+                    artifact.metric,
+                    artifact.scoring_version,
+                    artifact.execution_contract.value,
+                    artifact.execution_id,
+                    artifact.schema_version,
+                    json.dumps(list(artifact.build_params)),
+                    1 if artifact.replayable else 0,
+                ),
+            )
 
     def get_artifact(self, artifact_id: str) -> ExecutionArtifact | None:
-        row = self._conn.execute(
-            "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params FROM artifacts WHERE id=?",
-            (artifact_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params FROM artifacts WHERE id=?",
+                (artifact_id,),
+            ).fetchone()
         if not row:
             return None
         build_params_raw = row[8] or "[]"
@@ -387,9 +427,10 @@ class SQLiteExecutionLedger(ExecutionLedger):
         )
 
     def list_artifacts(self) -> Iterable[ExecutionArtifact]:
-        rows = self._conn.execute(
-            "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params FROM artifacts ORDER BY id"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, corpus_fp, vector_fp, metric, scoring, execution_contract, execution_id, schema_version, build_params FROM artifacts ORDER BY id"
+            ).fetchall()
         return [
             ExecutionArtifact(
                 artifact_id=r[0],
@@ -406,34 +447,37 @@ class SQLiteExecutionLedger(ExecutionLedger):
         ]
 
     def delete_artifact(self, tx: Tx, artifact_id: str) -> None:
-        self._conn.execute("DELETE FROM artifacts WHERE id=?", (artifact_id,))
+        with self._lock:
+            self._conn.execute("DELETE FROM artifacts WHERE id=?", (artifact_id,))
 
     def put_execution_result(self, tx: Tx, result: ExecutionResult) -> None:
         payload = json.dumps(result.to_primitive())
-        self._conn.execute(
-            "REPLACE INTO execution_results(execution_id, artifact_id, payload) VALUES(?,?,?)",
-            (result.execution_id, result.artifact_id, payload),
-        )
-        max_keep = 5
-        self._conn.execute(
-            """
-            DELETE FROM execution_results
-            WHERE artifact_id=?
-              AND rowid NOT IN (
-                SELECT rowid FROM execution_results
+        with self._lock:
+            self._conn.execute(
+                "REPLACE INTO execution_results(execution_id, artifact_id, payload) VALUES(?,?,?)",
+                (result.execution_id, result.artifact_id, payload),
+            )
+            max_keep = 5
+            self._conn.execute(
+                """
+                DELETE FROM execution_results
                 WHERE artifact_id=?
-                ORDER BY rowid DESC
-                LIMIT ?
-              )
-            """,
-            (result.artifact_id, result.artifact_id, max_keep),
-        )
+                  AND rowid NOT IN (
+                    SELECT rowid FROM execution_results
+                    WHERE artifact_id=?
+                    ORDER BY rowid DESC
+                    LIMIT ?
+                  )
+                """,
+                (result.artifact_id, result.artifact_id, max_keep),
+            )
 
     def get_execution_result(self, execution_id: str) -> ExecutionResult | None:
-        row = self._conn.execute(
-            "SELECT payload FROM execution_results WHERE execution_id=?",
-            (execution_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload FROM execution_results WHERE execution_id=?",
+                (execution_id,),
+            ).fetchone()
         if not row:
             return None
         payload = json.loads(row[0])
@@ -518,10 +562,11 @@ class SQLiteExecutionLedger(ExecutionLedger):
         )
 
     def latest_execution_result(self, artifact_id: str) -> ExecutionResult | None:
-        row = self._conn.execute(
-            "SELECT payload FROM execution_results WHERE artifact_id=? ORDER BY rowid DESC LIMIT 1",
-            (artifact_id,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload FROM execution_results WHERE artifact_id=? ORDER BY rowid DESC LIMIT 1",
+                (artifact_id,),
+            ).fetchone()
         if not row:
             return None
         payload = json.loads(row[0])
@@ -563,11 +608,14 @@ class SQLiteFixture(NamedTuple):
 
 
 def sqlite_backend(db_path: str = ":memory:") -> SQLiteFixture:
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     _init_schema(conn)
+    lock = threading.RLock()
 
     def tx_factory() -> SQLiteTx:
-        return SQLiteTx(conn)
+        return SQLiteTx(conn, lock)
 
     capabilities = BackendCapabilities(
         contracts={ExecutionContract.DETERMINISTIC},
@@ -581,8 +629,8 @@ def sqlite_backend(db_path: str = ":memory:") -> SQLiteFixture:
     )
     stores = ExecutionResources(
         name="sqlite",
-        vectors=SQLiteVectorSource(conn),
-        ledger=SQLiteExecutionLedger(conn),
+        vectors=SQLiteVectorSource(conn, lock),
+        ledger=SQLiteExecutionLedger(conn, lock),
         capabilities=capabilities,
     )
     diagnostics = {
