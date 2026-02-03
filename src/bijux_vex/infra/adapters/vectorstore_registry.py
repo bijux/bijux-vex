@@ -271,10 +271,10 @@ VECTOR_STORES.register(
         name="faiss",
         available=False,
         supports_exact=True,
-        supports_ann=False,
+        supports_ann=True,
         deterministic_exact=True,
         experimental=True,
-        notes="local FAISS index (IndexFlatL2)",
+        notes="local FAISS index (exact or ANN depending on index_type)",
     ),
     factory=_faiss_factory,
     contract=PluginContract(

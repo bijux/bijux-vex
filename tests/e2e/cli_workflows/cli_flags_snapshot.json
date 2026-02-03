@@ -555,6 +555,38 @@
     "params": []
   },
   {
+    "command": "vdb rebuild",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "mode",
+        "opts": [
+          "--mode"
+        ],
+        "required": false,
+        "default": "exact"
+      },
+      {
+        "param_type": "option",
+        "name": "uri",
+        "opts": [
+          "--uri"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
     "command": "vdb status",
     "params": [
       {

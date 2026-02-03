@@ -36,7 +36,7 @@ from bijux_vex.core.config import (
     VectorStoreConfig,
 )
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
-from bijux_vex.core.errors import BijuxError
+from bijux_vex.core.errors import BijuxError, ValidationError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
@@ -547,6 +547,32 @@ def vdb_status(
         }
         if hasattr(adapter, "status"):
             status.update(adapter.status())
+        _emit(ctx, status)
+    except BijuxError as exc:
+        _emit(ctx, {"backend": vector_store, "reachable": False, "error": str(exc)})
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@vdb_app.command("rebuild")
+@no_type_check
+def vdb_rebuild(
+    ctx: typer.Context,
+    vector_store: str = typer.Option(..., "--vector-store"),
+    uri: str | None = typer.Option(None, "--uri"),
+    mode: str = typer.Option("exact", "--mode", help="exact|ann"),
+) -> None:
+    try:
+        engine = VectorExecutionEngine(
+            config=_build_config(vector_store=vector_store, vector_store_uri=uri)
+        )
+        adapter = engine.vector_store_resolution.adapter
+        if not hasattr(adapter, "rebuild"):
+            raise ValidationError(
+                message="Selected vector store does not support rebuild"
+            )
+        index_type = "exact" if mode == "exact" else "ann"
+        status = adapter.rebuild(index_type=index_type)
         _emit(ctx, status)
     except BijuxError as exc:
         _emit(ctx, {"backend": vector_store, "reachable": False, "error": str(exc)})
