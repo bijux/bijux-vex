@@ -78,6 +78,7 @@ nav:
       - Backward Compatibility: contracts/backward_compatibility.md
       - Implicitness: contracts/implicitness.md
       - Error Style: contracts/error_style.md
+      - Query Contract: contracts/query_contract.md
   - Design:
       - Scope: design/scope.md
       - Non-Goals: design/non_goals.md
