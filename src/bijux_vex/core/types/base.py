@@ -79,6 +79,13 @@ class ExecutionBudget:
 
 
 @dataclass(frozen=True)
+class NDSettings:
+    profile: str | None = None
+    target_recall: float | None = None
+    latency_budget_ms: int | None = None
+
+
+@dataclass(frozen=True)
 class ExecutionRequest:
     request_id: str
     text: str | None
@@ -88,6 +95,7 @@ class ExecutionRequest:
     execution_intent: ExecutionIntent
     execution_mode: ExecutionMode = ExecutionMode.STRICT
     execution_budget: ExecutionBudget | None = None
+    nd_settings: NDSettings | None = None
     model: ModelSpec | None = None
 
     def __post_init__(self) -> None:
@@ -109,6 +117,10 @@ class ExecutionRequest:
                 raise InvariantError(
                     message="deterministic executions must use strict mode"
                 )
+            if self.nd_settings is not None:
+                raise InvariantError(
+                    message="nd_settings not allowed for deterministic execution"
+                )
         else:
             if self.execution_mode is ExecutionMode.STRICT:
                 raise InvariantError(
@@ -118,6 +130,29 @@ class ExecutionRequest:
                 raise InvariantError(
                     message="execution_budget required for non_deterministic execution"
                 )
+            if self.nd_settings is not None:
+                if self.nd_settings.profile not in {
+                    None,
+                    "fast",
+                    "balanced",
+                    "accurate",
+                }:
+                    raise InvariantError(
+                        message="nd_settings.profile must be fast|balanced|accurate"
+                    )
+                if self.nd_settings.target_recall is not None and not (
+                    0.0 < self.nd_settings.target_recall <= 1.0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.target_recall must be within (0,1]"
+                    )
+                if (
+                    self.nd_settings.latency_budget_ms is not None
+                    and self.nd_settings.latency_budget_ms <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.latency_budget_ms must be positive"
+                    )
         if self.vector is not None:
             object.__setattr__(self, "vector", tuple(self.vector))
 

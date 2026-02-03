@@ -15,6 +15,7 @@ EXPECTED = {
         "ModelSpec",
         "ExecutionRequest",
         "ExecutionBudget",
+        "NDSettings",
         "Result",
         "ExecutionArtifact",
     },

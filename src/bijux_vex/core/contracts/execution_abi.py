@@ -11,9 +11,9 @@ from bijux_vex.core.execution_result import ExecutionResult
 from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest
 
-EXECUTION_ABI_VERSION = "1.3.14"
+EXECUTION_ABI_VERSION = "1.3.18"
 EXPECTED_FINGERPRINT = (
-    "3402f52ba134b358ebac366961058e9f7b8e08afc0597716b45fec0b43f49104"
+    "4197d3a7dfd150cffa51d33fdaaafcbc4cf405f9bb1d18f04b7f8658a34294fc"
 )
 
 

@@ -2,7 +2,7 @@
 # Copyright © 2025 Bijan Mousavi
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from bijux_vex.core.canon import canon
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
@@ -40,8 +40,9 @@ class VectorExecution:
             raise InvariantError(
                 message="RandomnessProfile required for non-deterministic execution"
             )
+        request_payload = _canonical_request_payload(self.request)
         payload = {
-            "request": canon(self.request).decode("utf-8"),
+            "request": request_payload,
             "contract": self.contract.value,
             "backend_id": self.backend_id,
             "algorithm": self.algorithm,
@@ -98,6 +99,13 @@ def execution_signature(
         "seed": randomness.seed if randomness else None,
     }
     return fingerprint(payload)
+
+
+def _canonical_request_payload(request: ExecutionRequest) -> str:
+    payload = asdict(request)
+    if payload.get("nd_settings") is None:
+        payload.pop("nd_settings", None)
+    return canon(payload).decode("utf-8")
 
 
 __all__ = [
