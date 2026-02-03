@@ -167,14 +167,18 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
         batch = int(self._opts.batch_size)
         retries = int(self._opts.retry_count)
         backoff = int(self._opts.backoff_ms)
-        for idx in range(0, len(points), batch):
+        idx = 0
+        while idx < len(points):
             chunk = points[idx : idx + batch]
             attempt = 0
+            retry_all = False
             while True:
                 try:
                     self._client.upsert(
                         collection_name=self._opts.collection, points=chunk
                     )
+                    if retry_all:
+                        return
                     break
                 except Exception as exc:
                     attempt += 1
@@ -182,7 +186,10 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
                         raise BackendCapabilityError(
                             message=f"Qdrant upsert failed after retries: {exc}"
                         ) from exc
+                    retry_all = True
+                    chunk = points[idx:]
                     time.sleep(backoff / 1000.0)
+            idx += batch
 
     @staticmethod
     def _parse_options(options: Mapping[str, str]) -> QdrantOptions:

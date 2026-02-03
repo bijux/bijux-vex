@@ -302,7 +302,10 @@ class FaissVectorStoreAdapter(VectorStoreAdapter):
     def _persist(self) -> None:
         if not self._index_path or not self._meta_path or not self._records_path:
             return
-        if self._index is None:
+        if not self._records or self._index is None:
+            for path in (self._index_path, self._meta_path, self._records_path):
+                if path.exists():
+                    path.unlink(missing_ok=True)
             return
         self._index_path.parent.mkdir(parents=True, exist_ok=True)
         meta = {
