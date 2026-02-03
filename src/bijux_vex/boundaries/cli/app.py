@@ -52,7 +52,9 @@ from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.runtime.vector_execution import RandomnessProfile
-from bijux_vex.core.types import ExecutionBudget, ExecutionRequest, NDSettings
+from bijux_vex.core.types import ExecutionBudget, ExecutionRequest, NDSettings, Result
+from bijux_vex.domain.execution_requests import scoring
+from bijux_vex.domain.execution_requests.compare import _rank_instability
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
 from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
 from bijux_vex.infra.logging import enable_trace, trace_events
@@ -72,6 +74,9 @@ app.add_typer(artifact_app, name="artifact")
 
 ND_WARMUP_OPTION = typer.Option(
     None, "--nd-warmup-queries", help="Path to JSON warmup query vectors"
+)
+ND_TUNE_CACHE_OPTION = typer.Option(
+    None, "--cache", help="Optional path to cache tuning results"
 )
 
 
@@ -661,6 +666,9 @@ def execute(
     nd_witness_sample_k: int | None = typer.Option(
         None, "--nd-witness-sample-k", help="Exact witness top-k sample size"
     ),
+    nd_witness_mode: str | None = typer.Option(
+        None, "--nd-witness-mode", help="Witness mode: off|sample|full"
+    ),
     nd_build_on_demand: bool = typer.Option(
         False, "--nd-build-on-demand", help="Build ANN index on demand"
     ),
@@ -682,6 +690,9 @@ def execute(
     nd_adaptive_k: bool = typer.Option(
         False, "--nd-adaptive-k", help="Allow adaptive k below requested top_k"
     ),
+    nd_low_signal_refuse: bool = typer.Option(
+        False, "--nd-low-signal-refuse", help="Refuse ND when signal is too low"
+    ),
     nd_replay_strict: bool = typer.Option(
         False, "--nd-replay-strict", help="Refuse replay if index/params differ"
     ),
@@ -698,6 +709,19 @@ def execute(
         None,
         "--nd-max-index-memory-mb",
         help="Hard cap for ANN index memory (MB)",
+    ),
+    nd_m: int | None = typer.Option(None, "--nd-m", help="HNSW M parameter"),
+    nd_ef_construction: int | None = typer.Option(
+        None, "--nd-ef-construction", help="HNSW ef_construction parameter"
+    ),
+    nd_ef_search: int | None = typer.Option(
+        None, "--nd-ef-search", help="HNSW ef_search parameter"
+    ),
+    nd_max_ef_search: int | None = typer.Option(
+        None, "--nd-max-ef-search", help="Max HNSW ef_search (hard cap)"
+    ),
+    nd_space: str | None = typer.Option(
+        None, "--nd-space", help="HNSW space override: l2|cosine|ip"
     ),
     compare_to: str | None = typer.Option(
         None, "--compare-to", help="Compare ND run to exact (exact)"
@@ -748,6 +772,7 @@ def execute(
             nd_latency_budget_ms=nd_latency_budget_ms,
             nd_witness_rate=nd_witness_rate,
             nd_witness_sample_k=nd_witness_sample_k,
+            nd_witness_mode=nd_witness_mode,
             nd_build_on_demand=nd_build_on_demand,
             nd_candidate_k=nd_candidate_k,
             nd_diversity_lambda=nd_diversity_lambda,
@@ -755,11 +780,17 @@ def execute(
             nd_normalize_query=nd_normalize_query,
             nd_outlier_threshold=nd_outlier_threshold,
             nd_adaptive_k=nd_adaptive_k,
+            nd_low_signal_refuse=nd_low_signal_refuse,
             nd_replay_strict=nd_replay_strict,
             nd_warmup_queries=str(nd_warmup_queries) if nd_warmup_queries else None,
             nd_incremental_index=nd_incremental_index,
             nd_max_candidates=nd_max_candidates,
             nd_max_index_memory_mb=nd_max_index_memory_mb,
+            nd_m=nd_m,
+            nd_ef_construction=nd_ef_construction,
+            nd_ef_search=nd_ef_search,
+            nd_max_ef_search=nd_max_ef_search,
+            nd_space=nd_space,
             correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
@@ -1161,6 +1192,7 @@ def nd_tune(
     uri: str | None = typer.Option(None, "--uri"),
     top_k: int = typer.Option(10, "--top-k"),
     samples: int = typer.Option(10, "--samples"),
+    cache: Path | None = ND_TUNE_CACHE_OPTION,
 ) -> None:
     try:
         engine = VectorExecutionEngine(
@@ -1176,43 +1208,151 @@ def nd_tune(
         if not vectors:
             raise ValidationError(message="No vectors available for tuning")
         queries = [tuple(v.values) for v in vectors[: max(1, samples)]]
-        profiles = ("fast", "balanced", "accurate")
-        results: list[dict[str, object]] = []
-        for profile in profiles:
-            nd_settings = NDSettings(profile=profile)
-            request = ExecutionRequest(
-                request_id=f"nd-tune-{profile}",
-                text=None,
-                vector=queries[0],
-                top_k=top_k,
-                execution_contract=ExecutionContract.NON_DETERMINISTIC,
-                execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
-                execution_mode=ExecutionMode.BOUNDED,
-                nd_settings=nd_settings,
-            )
-            latencies: list[float] = []
-            for query in queries:
-                start = time.perf_counter()
-                _ = list(
-                    ann_runner.approximate_request(
-                        artifact,
-                        replace(request, vector=query),
+        dim = vectors[0].dimension
+        cache_key = fingerprint(
+            {
+                "vector_fingerprint": artifact.vector_fingerprint,
+                "metric": artifact.metric,
+                "dimension": dim,
+                "runner": ann_runner.__class__.__name__,
+                "runner_version": getattr(ann_runner, "__version__", "unknown"),
+                "top_k": top_k,
+                "samples": samples,
+            }
+        )
+        if cache is not None and cache.exists():
+            cached = json.loads(cache.read_text(encoding="utf-8"))
+            if cached.get("cache_key") == cache_key:
+                _emit(ctx, cached["payload"])
+                return
+
+        def _exact(query: tuple[float, ...]) -> list[Result]:
+            scored: list[Result] = []
+            for vector in vectors:
+                score = scoring.score(artifact.metric, query, tuple(vector.values))
+                scored.append(
+                    Result(
+                        request_id="nd-tune",
+                        document_id="",
+                        chunk_id=vector.chunk_id,
+                        vector_id=vector.vector_id,
+                        artifact_id=artifact.artifact_id,
+                        score=score,
+                        rank=0,
                     )
                 )
-                latencies.append((time.perf_counter() - start) * 1000)
-            p95 = (
-                sorted(latencies)[int(len(latencies) * 0.95) - 1] if latencies else 0.0
+            scored.sort(key=scoring.tie_break_key)
+            return scored[:top_k]
+
+        exact_cache = {query: _exact(query) for query in queries}
+        grid = {
+            "m": [8, 16, 32],
+            "ef_construction": [100, 200],
+            "ef_search": [50, 100, 200],
+        }
+        results: list[dict[str, object]] = []
+        for m_val in grid["m"]:
+            for efc in grid["ef_construction"]:
+                for efs in grid["ef_search"]:
+                    nd_settings = NDSettings(
+                        profile=None,
+                        m=m_val,
+                        ef_construction=efc,
+                        ef_search=efs,
+                        build_on_demand=True,
+                    )
+                    ann_runner.build_index(
+                        artifact.artifact_id, vectors, artifact.metric, nd_settings
+                    )
+                    request = ExecutionRequest(
+                        request_id=f"nd-tune-m{m_val}-efc{efc}-efs{efs}",
+                        text=None,
+                        vector=queries[0],
+                        top_k=top_k,
+                        execution_contract=ExecutionContract.NON_DETERMINISTIC,
+                        execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
+                        execution_mode=ExecutionMode.BOUNDED,
+                        nd_settings=nd_settings,
+                    )
+                    latencies: list[float] = []
+                    overlaps: list[float] = []
+                    instabilities: list[float] = []
+                    for query in queries:
+                        start = time.perf_counter()
+                        ann_results = list(
+                            ann_runner.approximate_request(
+                                artifact,
+                                replace(request, vector=query),
+                            )
+                        )
+                        latencies.append((time.perf_counter() - start) * 1000)
+                        exact_results = exact_cache[query]
+                        ids_ann = [r.vector_id for r in ann_results]
+                        ids_exact = [r.vector_id for r in exact_results]
+                        overlap = set(ids_ann) & set(ids_exact)
+                        overlaps.append(len(overlap) / float(len(ids_exact) or 1))
+                        instabilities.append(
+                            _rank_instability(ids_ann, ids_exact, overlap)
+                        )
+                    p95 = (
+                        sorted(latencies)[int(len(latencies) * 0.95) - 1]
+                        if latencies
+                        else 0.0
+                    )
+                    result = {
+                        "params": {
+                            "m": m_val,
+                            "ef_construction": efc,
+                            "ef_search": efs,
+                        },
+                        "latency_ms": {
+                            "mean": round(mean(latencies), 3) if latencies else 0.0,
+                            "p95": round(p95, 3),
+                        },
+                        "quality": {
+                            "overlap_at_k": round(mean(overlaps), 4)
+                            if overlaps
+                            else 0.0,
+                            "rank_instability": round(mean(instabilities), 4)
+                            if instabilities
+                            else 0.0,
+                        },
+                        "samples": len(latencies),
+                    }
+                    results.append(result)
+
+        def _dominates(a: dict[str, object], b: dict[str, object]) -> bool:
+            a_lat = a["latency_ms"]["mean"]
+            b_lat = b["latency_ms"]["mean"]
+            a_qual = a["quality"]["overlap_at_k"]
+            b_qual = b["quality"]["overlap_at_k"]
+            return (a_lat <= b_lat and a_qual >= b_qual) and (
+                a_lat < b_lat or a_qual > b_qual
             )
-            results.append(
-                {
-                    "profile": profile,
-                    "avg_ms": round(mean(latencies), 3) if latencies else 0.0,
-                    "p95_ms": round(p95, 3),
-                    "samples": len(latencies),
-                }
-            )
-        recommended = min(results, key=lambda r: r["avg_ms"])["profile"]
-        _emit(ctx, {"profiles": results, "recommended": recommended})
+
+        pareto = []
+        for candidate in results:
+            if any(
+                _dominates(other, candidate)
+                for other in results
+                if other is not candidate
+            ):
+                continue
+            pareto.append(candidate)
+
+        recommended = max(
+            results,
+            key=lambda r: (r["quality"]["overlap_at_k"], -r["latency_ms"]["mean"]),
+        )
+        payload = {
+            "grid": results,
+            "pareto_frontier": pareto,
+            "recommended": recommended,
+        }
+        if cache is not None:
+            cache_payload = {"cache_key": cache_key, "payload": payload}
+            cache.write_text(json.dumps(cache_payload, indent=2), encoding="utf-8")
+        _emit(ctx, payload)
     except BijuxError as exc:
         record_failure(exc)
         if is_refusal(exc):

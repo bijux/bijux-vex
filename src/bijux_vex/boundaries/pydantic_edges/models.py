@@ -70,6 +70,7 @@ class ExecutionRequestPayload(StrictModel):
     nd_latency_budget_ms: int | None = None
     nd_witness_rate: float | None = None
     nd_witness_sample_k: int | None = None
+    nd_witness_mode: str | None = None
     nd_build_on_demand: bool = False
     nd_candidate_k: int | None = None
     nd_diversity_lambda: float | None = None
@@ -77,11 +78,17 @@ class ExecutionRequestPayload(StrictModel):
     nd_normalize_query: bool = False
     nd_outlier_threshold: float | None = None
     nd_adaptive_k: bool = False
+    nd_low_signal_refuse: bool = False
     nd_replay_strict: bool = False
     nd_warmup_queries: str | None = None
     nd_incremental_index: bool | None = None
     nd_max_candidates: int | None = None
     nd_max_index_memory_mb: int | None = None
+    nd_m: int | None = None
+    nd_ef_construction: int | None = None
+    nd_ef_search: int | None = None
+    nd_max_ef_search: int | None = None
+    nd_space: str | None = None
     correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
@@ -122,6 +129,7 @@ class ExecutionRequestPayload(StrictModel):
                 or self.nd_latency_budget_ms is not None
                 or self.nd_witness_rate is not None
                 or self.nd_witness_sample_k is not None
+                or self.nd_witness_mode is not None
                 or self.nd_build_on_demand
                 or self.nd_candidate_k is not None
                 or self.nd_diversity_lambda is not None
@@ -129,11 +137,17 @@ class ExecutionRequestPayload(StrictModel):
                 or self.nd_normalize_query
                 or self.nd_outlier_threshold is not None
                 or self.nd_adaptive_k
+                or self.nd_low_signal_refuse
                 or self.nd_replay_strict
                 or self.nd_warmup_queries is not None
                 or self.nd_incremental_index is not None
                 or self.nd_max_candidates is not None
                 or self.nd_max_index_memory_mb is not None
+                or self.nd_m is not None
+                or self.nd_ef_construction is not None
+                or self.nd_ef_search is not None
+                or self.nd_max_ef_search is not None
+                or self.nd_space is not None
             ):
                 raise ValueError("nd_* settings require non_deterministic execution")
         else:
@@ -153,6 +167,8 @@ class ExecutionRequestPayload(StrictModel):
                 0.0 < self.nd_witness_rate <= 1.0
             ):
                 raise ValueError("nd_witness_rate must be within (0,1]")
+            if self.nd_witness_mode not in {None, "off", "sample", "full"}:
+                raise ValueError("nd_witness_mode must be off|sample|full")
             if self.nd_witness_sample_k is not None and self.nd_witness_sample_k <= 0:
                 raise ValueError("nd_witness_sample_k must be positive")
             if (
@@ -160,6 +176,16 @@ class ExecutionRequestPayload(StrictModel):
                 and self.nd_max_index_memory_mb <= 0
             ):
                 raise ValueError("nd_max_index_memory_mb must be positive")
+            if self.nd_m is not None and self.nd_m <= 0:
+                raise ValueError("nd_m must be positive")
+            if self.nd_ef_construction is not None and self.nd_ef_construction <= 0:
+                raise ValueError("nd_ef_construction must be positive")
+            if self.nd_ef_search is not None and self.nd_ef_search <= 0:
+                raise ValueError("nd_ef_search must be positive")
+            if self.nd_max_ef_search is not None and self.nd_max_ef_search <= 0:
+                raise ValueError("nd_max_ef_search must be positive")
+            if self.nd_space not in {None, "l2", "cosine", "ip"}:
+                raise ValueError("nd_space must be l2|cosine|ip")
             if self.randomness_profile and self.randomness_profile.seed is None:
                 sources = tuple(self.randomness_profile.sources or ())
                 if not sources or not self.randomness_profile.non_replayable:
@@ -226,3 +252,4 @@ class BackendCapabilitiesReport(StrictModel):
     storage_backends: list[StorageBackendDescriptor]
     vector_stores: list[VectorStoreDescriptor]
     plugins: dict[str, list[dict[str, object]]]
+    nd: dict[str, object] | None = None

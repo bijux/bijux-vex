@@ -514,6 +514,24 @@
       },
       {
         "default": null,
+        "name": "nd_ef_construction",
+        "opts": [
+          "--nd-ef-construction"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_ef_search",
+        "opts": [
+          "--nd-ef-search"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
         "name": "nd_incremental_index",
         "opts": [
           "--nd-incremental-index",
@@ -532,10 +550,37 @@
         "required": false
       },
       {
+        "default": false,
+        "name": "nd_low_signal_refuse",
+        "opts": [
+          "--nd-low-signal-refuse"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_m",
+        "opts": [
+          "--nd-m"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": null,
         "name": "nd_max_candidates",
         "opts": [
           "--nd-max-candidates"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_max_ef_search",
+        "opts": [
+          "--nd-max-ef-search"
         ],
         "param_type": "option",
         "required": false
@@ -596,6 +641,15 @@
       },
       {
         "default": null,
+        "name": "nd_space",
+        "opts": [
+          "--nd-space"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
         "name": "nd_target_recall",
         "opts": [
           "--nd-target-recall"
@@ -608,6 +662,15 @@
         "name": "nd_warmup_queries",
         "opts": [
           "--nd-warmup-queries"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_witness_mode",
+        "opts": [
+          "--nd-witness-mode"
         ],
         "param_type": "option",
         "required": false
@@ -934,6 +997,15 @@
   {
     "command": "nd tune",
     "params": [
+      {
+        "default": null,
+        "name": "cache",
+        "opts": [
+          "--cache"
+        ],
+        "param_type": "option",
+        "required": false
+      },
       {
         "default": 10,
         "name": "samples",
