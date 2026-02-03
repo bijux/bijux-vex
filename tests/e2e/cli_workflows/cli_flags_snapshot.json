@@ -59,6 +59,24 @@
         ],
         "required": true,
         "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "required": false,
+        "default": null
       }
     ]
   },
@@ -181,6 +199,24 @@
         ],
         "required": false,
         "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "required": false,
+        "default": null
       }
     ]
   },
@@ -203,6 +239,15 @@
     "params": [
       {
         "param_type": "option",
+        "name": "cache_embeddings",
+        "opts": [
+          "--cache-embeddings"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
         "name": "doc",
         "opts": [
           "--doc"
@@ -212,11 +257,47 @@
       },
       {
         "param_type": "option",
+        "name": "embed_model",
+        "opts": [
+          "--embed-model"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "embed_provider",
+        "opts": [
+          "--embed-provider"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
         "name": "vector",
         "opts": [
           "--vector"
         ],
-        "required": true,
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "required": false,
         "default": null
       }
     ]
@@ -235,6 +316,24 @@
           "--execution-contract"
         ],
         "required": true,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "required": false,
         "default": null
       }
     ]
@@ -256,5 +355,32 @@
   {
     "command": "root",
     "params": []
+  },
+  {
+    "command": "vdb",
+    "params": []
+  },
+  {
+    "command": "vdb status",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "uri",
+        "opts": [
+          "--uri"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
   }
 ]

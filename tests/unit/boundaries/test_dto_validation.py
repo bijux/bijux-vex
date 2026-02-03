@@ -23,7 +23,12 @@ def test_unknown_fields_rejected():
 
 def test_ingest_length_mismatch():
     with pytest.raises(ValidationError):
-        IngestRequest(documents=["a"], vectors=[])
+        IngestRequest(documents=["a", "b"], vectors=[[0.0]])
+
+
+def test_ingest_requires_vectors_or_embed_model():
+    with pytest.raises(ValidationError):
+        IngestRequest(documents=["a"])
 
 
 def test_execute_requires_request_or_vector():

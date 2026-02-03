@@ -66,6 +66,12 @@ def test_provenance_contains_only_expected_fields():
         "embedding_determinism",
         "embedding_seed",
         "embedding_model_version",
+        "embedding_provider",
+        "embedding_device",
+        "embedding_dtype",
+        "vector_store_backend",
+        "vector_store_uri_redacted",
+        "vector_store_index_params",
     }
     assert provenance["metric"] == "l2"
     assert provenance["execution_contract"] == ExecutionContract.DETERMINISTIC
@@ -75,3 +81,9 @@ def test_provenance_contains_only_expected_fields():
     assert provenance["embedding_determinism"] is None
     assert provenance["embedding_seed"] is None
     assert provenance["embedding_model_version"] is None
+    assert provenance["embedding_provider"] is None
+    assert provenance["embedding_device"] is None
+    assert provenance["embedding_dtype"] is None
+    assert provenance["vector_store_backend"] is None
+    assert provenance["vector_store_uri_redacted"] is None
+    assert provenance["vector_store_index_params"] is None

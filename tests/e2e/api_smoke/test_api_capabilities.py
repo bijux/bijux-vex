@@ -18,3 +18,4 @@ def test_api_capabilities_reports_backend():
     assert "execution_modes" in data and isinstance(data["execution_modes"], list)
     assert data["ann_status"] in {"experimental", "unavailable", "stable"}
     assert isinstance(data["storage_backends"], list)
+    assert isinstance(data["vector_stores"], list)
