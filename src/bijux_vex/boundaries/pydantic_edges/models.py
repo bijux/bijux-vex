@@ -67,6 +67,8 @@ class ExecutionRequestPayload(StrictModel):
     nd_profile: str | None = None
     nd_target_recall: float | None = None
     nd_latency_budget_ms: int | None = None
+    nd_witness_rate: float | None = None
+    nd_witness_sample_k: int | None = None
     correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
@@ -105,6 +107,8 @@ class ExecutionRequestPayload(StrictModel):
                 self.nd_profile is not None
                 or self.nd_target_recall is not None
                 or self.nd_latency_budget_ms is not None
+                or self.nd_witness_rate is not None
+                or self.nd_witness_sample_k is not None
             ):
                 raise ValueError("nd_* settings require non_deterministic execution")
         else:
@@ -120,6 +124,12 @@ class ExecutionRequestPayload(StrictModel):
                 raise ValueError("nd_target_recall must be within (0,1]")
             if self.nd_latency_budget_ms is not None and self.nd_latency_budget_ms <= 0:
                 raise ValueError("nd_latency_budget_ms must be positive")
+            if self.nd_witness_rate is not None and not (
+                0.0 < self.nd_witness_rate <= 1.0
+            ):
+                raise ValueError("nd_witness_rate must be within (0,1]")
+            if self.nd_witness_sample_k is not None and self.nd_witness_sample_k <= 0:
+                raise ValueError("nd_witness_sample_k must be positive")
         return self
 
 

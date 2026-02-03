@@ -83,6 +83,8 @@ class NDSettings:
     profile: str | None = None
     target_recall: float | None = None
     latency_budget_ms: int | None = None
+    witness_rate: float | None = None
+    witness_sample_k: int | None = None
 
 
 @dataclass(frozen=True)
@@ -152,6 +154,19 @@ class ExecutionRequest:
                 ):
                     raise InvariantError(
                         message="nd_settings.latency_budget_ms must be positive"
+                    )
+                if self.nd_settings.witness_rate is not None and not (
+                    0.0 < self.nd_settings.witness_rate <= 1.0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.witness_rate must be within (0,1]"
+                    )
+                if (
+                    self.nd_settings.witness_sample_k is not None
+                    and self.nd_settings.witness_sample_k <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.witness_sample_k must be positive"
                     )
         if self.vector is not None:
             object.__setattr__(self, "vector", tuple(self.vector))

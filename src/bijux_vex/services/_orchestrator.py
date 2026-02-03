@@ -623,11 +623,15 @@ class Orchestrator:
                 profile=req.nd_profile,
                 target_recall=req.nd_target_recall,
                 latency_budget_ms=req.nd_latency_budget_ms,
+                witness_rate=req.nd_witness_rate,
+                witness_sample_k=req.nd_witness_sample_k,
             )
             if (
                 req.nd_profile is not None
                 or req.nd_target_recall is not None
                 or req.nd_latency_budget_ms is not None
+                or req.nd_witness_rate is not None
+                or req.nd_witness_sample_k is not None
             )
             else None,
         )
@@ -670,6 +674,8 @@ class Orchestrator:
                 "execution_contract": req.execution_contract.value,
                 "execution_intent": req.execution_intent.value,
                 "execution_mode": req.execution_mode.value,
+                "nd_witness_rate": req.nd_witness_rate,
+                "nd_witness_sample_k": req.nd_witness_sample_k,
             },
             "backend": getattr(self.backend, "name", "unknown"),
             "vector_store": {
