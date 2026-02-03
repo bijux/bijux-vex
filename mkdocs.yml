@@ -33,6 +33,7 @@ nav:
   - Home: index.md
   - User:
       - Start Here: user/start_here.md
+      - Start Here (Human): user/start_here_human.md
       - What It Is: user/what_is_bijux_vex.md
       - If You Only Read One Page: user/only_read_one_page.md
       - Reading Order: user/reading_order.md
@@ -52,6 +53,9 @@ nav:
       - When to Stop Caring: user/determinism_stop_caring.md
       - Determinism Refusals: user/determinism_refusals.md
       - Deterministic Replay: user/deterministic_replay.md
+      - Common Mistakes: user/common_mistakes.md
+      - Trust & Guarantees: user/trust_and_guarantees.md
+      - Stability Markers: user/experimental_stable_markers.md
       - Determinism Guide: user/determinism_guide.md
       - ND Execution Model: user/nd_execution_model.md
       - ND Use Cases: user/nd_use_cases.md
@@ -62,6 +66,8 @@ nav:
       - ND Troubleshooting: user/nd_troubleshooting.md
       - ND Examples: user/nd_examples.md
       - ND Decision Tree: user/nd_decision_tree.md
+      - ND Failure Story: user/nd_failure_story.md
+      - ND Promises: user/nd_promises.md
       - ND Production Guide: guides/nd_production.md
       - Vector Store Semantics: user/vector_store_semantics.md
       - Embedding Lifecycle: user/embedding_lifecycle.md
@@ -71,6 +77,12 @@ nav:
       - What Happens When Things Go Wrong: user/what_happens_when_things_go_wrong.md
       - Provenance as Audit: user/provenance_audit.md
       - Safety Philosophy: user/safety_philosophy.md
+      - Anti-Goals: user/anti_goals.md
+      - Naming Explained: user/naming_explained.md
+      - Stability & Support: user/stability_support_policy.md
+      - Security Posture: user/security_posture.md
+      - Before Production: user/before_production_checklist.md
+      - Project Values: user/project_values.md
       - How To Think With Bijux-Vex: user/how_to_think_with_bijux_vex.md
       - Vector Stores:
           - Memory: user/vectorstores/memory.md
