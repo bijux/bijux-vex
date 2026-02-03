@@ -479,6 +479,17 @@
             ],
             "title": "Embed Provider"
           },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
           "vector_store": {
             "anyOf": [
               {
@@ -764,6 +775,13 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "artifact": {
+                  "value": {
+                    "execution_contract": "deterministic"
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/ExecutionArtifactRequest"
               }
@@ -775,9 +793,120 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "artifact": {
+                    "value": {
+                      "artifact_id": "art-1",
+                      "execution_contract": "deterministic",
+                      "execution_contract_status": "stable",
+                      "replayable": true
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Artifact Artifact Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Artifact"
+      }
+    },
+    "/artifacts": {
+      "get": {
+        "operationId": "list_artifacts_artifacts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "artifacts": {
+                    "value": {
+                      "artifacts": [
+                        "art-1"
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Artifacts Artifacts Get",
                   "type": "object"
                 }
               }
@@ -795,7 +924,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Artifact"
+        "summary": "List Artifacts"
       }
     },
     "/capabilities": {
@@ -823,6 +952,35 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "capabilities": {
+                    "value": {
+                      "ann_status": "unavailable",
+                      "backend": "sqlite",
+                      "contracts": [
+                        "deterministic",
+                        "non_deterministic"
+                      ],
+                      "deterministic_query": true,
+                      "execution_modes": [
+                        "strict",
+                        "bounded",
+                        "exploratory"
+                      ],
+                      "isolation_level": "read_committed",
+                      "max_vector_size": 4096,
+                      "metrics": [
+                        "l2",
+                        "cosine"
+                      ],
+                      "plugins": {},
+                      "replayable": true,
+                      "storage_backends": [],
+                      "supports_ann": false,
+                      "vector_stores": []
+                    }
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/BackendCapabilitiesReport"
                 }
@@ -868,6 +1026,13 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "create": {
+                  "value": {
+                    "name": "my-corpus"
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/CreateRequest"
               }
@@ -879,6 +1044,14 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "created": {
+                    "value": {
+                      "name": "my-corpus",
+                      "status": "created"
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Create Create Post",
@@ -887,6 +1060,24 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "422": {
             "content": {
@@ -926,6 +1117,22 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "execute": {
+                  "value": {
+                    "artifact_id": "art-1",
+                    "execution_contract": "deterministic",
+                    "execution_intent": "exact_validation",
+                    "execution_mode": "strict",
+                    "top_k": 3,
+                    "vector": [
+                      0.0,
+                      1.0,
+                      0.0
+                    ]
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/ExecutionRequestPayload"
               }
@@ -937,6 +1144,20 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "execute": {
+                    "value": {
+                      "correlation_id": "req-1",
+                      "execution_contract": "deterministic",
+                      "execution_contract_status": "stable",
+                      "execution_id": "exec-1",
+                      "replayable": true,
+                      "results": [
+                        "vec-1"
+                      ]
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Execute Execute Post",
@@ -949,12 +1170,20 @@
           "422": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unprocessable Entity"
           }
         },
         "summary": "Execute"
@@ -984,6 +1213,13 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "explain": {
+                  "value": {
+                    "result_id": "res-1"
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/ExplainRequest"
               }
@@ -995,6 +1231,13 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "explain": {
+                    "value": {
+                      "result_id": "res-1"
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Explain Explain Post",
@@ -1003,6 +1246,24 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "422": {
             "content": {
@@ -1037,11 +1298,45 @@
               ],
               "title": "X-Correlation-Id"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "ingest": {
+                  "value": {
+                    "documents": [
+                      "hello"
+                    ],
+                    "vector_store": "faiss",
+                    "vector_store_uri": "index.faiss",
+                    "vectors": [
+                      [
+                        0.0,
+                        1.0,
+                        0.0
+                      ]
+                    ]
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/IngestRequest"
               }
@@ -1053,6 +1348,13 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "ingested": {
+                    "value": {
+                      "ingested": 1
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Ingest Ingest Post",
@@ -1061,6 +1363,24 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "422": {
             "content": {
@@ -1100,6 +1420,14 @@
         "requestBody": {
           "content": {
             "application/json": {
+              "examples": {
+                "replay": {
+                  "value": {
+                    "artifact_id": "art-1",
+                    "request_text": "hello"
+                  }
+                }
+              },
               "schema": {
                 "$ref": "#/components/schemas/ExecutionRequestPayload"
               }
@@ -1111,9 +1439,117 @@
           "200": {
             "content": {
               "application/json": {
+                "examples": {
+                  "replay": {
+                    "value": {
+                      "matches": true
+                    }
+                  }
+                },
                 "schema": {
                   "additionalProperties": true,
                   "title": "Response Replay Replay Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "refusal": {
+                    "value": {
+                      "error": {
+                        "message": "[INV-000] Deterministic execution requires a deterministic vector store",
+                        "reason": "determinism_violation",
+                        "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay"
+      }
+    },
+    "/runs": {
+      "get": {
+        "operationId": "list_runs_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Correlation-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Correlation-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "runs": {
+                    "value": {
+                      "runs": [
+                        "run-1"
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Runs Runs Get",
                   "type": "object"
                 }
               }
@@ -1131,7 +1567,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Replay"
+        "summary": "List Runs"
       }
     }
   }

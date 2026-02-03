@@ -19,10 +19,20 @@ def run_cmd(args):
 def test_basic_cli_flow(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     vec = json.dumps([0.0, 0.0])
-    out = run_cmd(["ingest", "--doc", "hello", "--vector", vec])
+    out = run_cmd(
+        ["ingest", "--doc", "hello", "--vector", vec, "--vector-store", "memory"]
+    )
     assert json.loads(out)["ingested"] == 1
 
-    out = run_cmd(["materialize", "--execution-contract", "deterministic"])
+    out = run_cmd(
+        [
+            "materialize",
+            "--execution-contract",
+            "deterministic",
+            "--vector-store",
+            "memory",
+        ]
+    )
     assert json.loads(out)["artifact_id"] == "art-1"
 
     out = run_cmd(
@@ -34,6 +44,8 @@ def test_basic_cli_flow(tmp_path: Path, monkeypatch):
             "deterministic",
             "--execution-intent",
             "exact_validation",
+            "--vector-store",
+            "memory",
         ]
     )
     res = json.loads(out)["results"]

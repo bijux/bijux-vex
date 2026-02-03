@@ -10,15 +10,22 @@ CLI_HELP = """
  Usage: python -m bijux_vex.boundaries.cli.app [OPTIONS] COMMAND [ARGS]...      
                                                                                 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format        TEXT  Output format: json|table (default: json)              │
-│ --output        PATH  Write output to a file                                 │
-│ --config        PATH  Load configuration from a TOML/YAML file               │
-│ --help                Show this message and exit.                            │
+│ --format          TEXT  Output format: json|table (default: json)            │
+│ --output          PATH  Write output to a file                               │
+│ --config          PATH  Load configuration from a TOML/YAML file             │
+│ --trace                 Emit trace metadata                                  │
+│ --quiet                 Suppress non-error output                            │
+│ --no-color              Disable colored output                               │
+│ --help                  Show this message and exit.                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ list-artifacts                                                               │
+│ list-runs                                                                    │
+│ init                                                                         │
 │ capabilities                                                                 │
 │ ingest                                                                       │
+│ validate                                                                     │
+│ doctor                                                                       │
 │ materialize                                                                  │
 │ execute                                                                      │
 │ explain                                                                      │
@@ -29,6 +36,7 @@ CLI_HELP = """
 │ debug-bundle                                                                 │
 │ vdb             Vector DB utilities                                          │
 │ config          Configuration utilities                                      │
+│ artifact        Artifact bundle utilities                                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 """

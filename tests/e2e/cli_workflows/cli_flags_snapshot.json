@@ -1,5 +1,60 @@
 [
   {
+    "command": "artifact",
+    "params": []
+  },
+  {
+    "command": "artifact pack",
+    "params": [
+      {
+        "default": null,
+        "name": "run_id",
+        "nargs": 1,
+        "param_type": "argument",
+        "required": true
+      },
+      {
+        "default": false,
+        "name": "include_vectors",
+        "opts": [
+          "--include-vectors"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": "bundle.zip",
+        "name": "out",
+        "opts": [
+          "--out"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
+    "command": "artifact unpack",
+    "params": [
+      {
+        "default": null,
+        "name": "bundle",
+        "nargs": 1,
+        "param_type": "argument",
+        "required": true
+      },
+      {
+        "default": "bundle_out",
+        "name": "out_dir",
+        "opts": [
+          "--out-dir"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
     "command": "bench",
     "params": [
       {
@@ -156,6 +211,24 @@
         "required": false
       },
       {
+        "default": null,
+        "name": "bundle_a",
+        "opts": [
+          "--bundle-a"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "bundle_b",
+        "opts": [
+          "--bundle-b"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": "deterministic",
         "name": "execution_contract",
         "opts": [
@@ -174,6 +247,24 @@
         "required": true
       },
       {
+        "default": null,
+        "name": "run_a",
+        "opts": [
+          "--run-a"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "run_b",
+        "opts": [
+          "--run-b"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": 5,
         "name": "top_k",
         "opts": [
@@ -189,7 +280,7 @@
           "--vector"
         ],
         "param_type": "option",
-        "required": true
+        "required": false
       },
       {
         "default": null,
@@ -231,6 +322,29 @@
         "param_type": "option",
         "required": false
       },
+      {
+        "default": null,
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
+    "command": "doctor",
+    "params": [
       {
         "default": null,
         "name": "vector_store",
@@ -519,8 +633,73 @@
     ]
   },
   {
+    "command": "init",
+    "params": [
+      {
+        "default": "bijux_vex.toml",
+        "name": "config_path",
+        "opts": [
+          "--config-path"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "force",
+        "opts": [
+          "--force"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
     "command": "list-artifacts",
-    "params": []
+    "params": [
+      {
+        "default": null,
+        "name": "limit",
+        "opts": [
+          "--limit"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 0,
+        "name": "offset",
+        "opts": [
+          "--offset"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
+    "command": "list-runs",
+    "params": [
+      {
+        "default": null,
+        "name": "limit",
+        "opts": [
+          "--limit"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 0,
+        "name": "offset",
+        "opts": [
+          "--offset"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
   },
   {
     "command": "materialize",
@@ -594,10 +773,87 @@
         "required": false
       },
       {
+        "default": false,
+        "name": "no_color",
+        "opts": [
+          "--no-color"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": null,
         "name": "output",
         "opts": [
           "--output"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "quiet",
+        "opts": [
+          "--quiet"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "trace",
+        "opts": [
+          "--trace"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
+    "command": "validate",
+    "params": [
+      {
+        "default": null,
+        "name": "doc",
+        "opts": [
+          "--doc"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "execution_contract",
+        "opts": [
+          "--execution-contract"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector",
+        "opts": [
+          "--vector"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
         ],
         "param_type": "option",
         "required": false

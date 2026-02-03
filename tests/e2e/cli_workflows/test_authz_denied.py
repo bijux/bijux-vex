@@ -26,6 +26,8 @@ def test_cli_denies_mutations_when_authz_disabled(tmp_path: Path, monkeypatch):
         "hi",
         "--vector",
         json.dumps([0.0, 0.0]),
+        "--vector-store",
+        "memory",
     ]
     with pytest.raises(subprocess.CalledProcessError) as err:
         subprocess.check_output(cmd, text=True, env=env)

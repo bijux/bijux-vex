@@ -24,8 +24,20 @@ def test_cli_outputs_are_deterministic(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     vec = json.dumps([0.0, 0.0])
-    run_cmd(["ingest", "--doc", "hello", "--vector", vec], env=env)
-    run_cmd(["materialize", "--execution-contract", "deterministic"], env=env)
+    run_cmd(
+        ["ingest", "--doc", "hello", "--vector", vec, "--vector-store", "memory"],
+        env=env,
+    )
+    run_cmd(
+        [
+            "materialize",
+            "--execution-contract",
+            "deterministic",
+            "--vector-store",
+            "memory",
+        ],
+        env=env,
+    )
 
     search1 = run_cmd(
         [
@@ -36,6 +48,8 @@ def test_cli_outputs_are_deterministic(tmp_path: Path, monkeypatch):
             "deterministic",
             "--execution-intent",
             "exact_validation",
+            "--vector-store",
+            "memory",
         ],
         env=env,
     )
@@ -48,6 +62,8 @@ def test_cli_outputs_are_deterministic(tmp_path: Path, monkeypatch):
             "deterministic",
             "--execution-intent",
             "exact_validation",
+            "--vector-store",
+            "memory",
         ],
         env=env,
     )
