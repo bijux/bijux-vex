@@ -1,23 +1,23 @@
 # What ND Can and Cannot Promise
 
-ND (non-deterministic) execution is designed for speed and scale, not exact replay. It is powerful when you accept trade-offs **explicitly**.
+## Why this exists
 
-What ND optimizes for
+ND is powerful but only safe when its limits are explicit. This page exists to set expectations before you rely on ND in production.
 
-- Fast approximate search at scale.
-- Bounded quality with explicit metrics.
-- Operational visibility into uncertainty.
+## What ND optimizes for
 
-What ND cannot guarantee
+- Speed at scale
+- Bounded quality with explicit metrics
+- Transparent uncertainty
 
-- Bit-identical replay across runs.
-- Exact ranking agreement with deterministic search.
-- Stability if index state or parameters drift.
+## What ND cannot guarantee
 
-What replaces guarantees
+- Bit‑identical replay
+- Exact ranking agreement with deterministic search
+- Stability without fixed index hashes and parameters
 
-- Quality metrics (instability, margin, entropy).
-- Witness checks when enabled.
-- Declared randomness profiles and bounds.
+## What replaces guarantees
 
-ND earns trust by being honest about limits.
+- Quality metrics (instability, margin, entropy)
+- Witness checks when enabled
+- Declared randomness profiles and bounds
