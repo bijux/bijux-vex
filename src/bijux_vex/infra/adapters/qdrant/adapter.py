@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 import time
 from typing import Any
+import uuid
 
 try:  # pragma: no cover - optional dependency
     from qdrant_client import QdrantClient
@@ -61,11 +62,14 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
     def connect(self) -> None:
         if QdrantClient is None:  # pragma: no cover - defensive
             raise ImportError("qdrant-client is not available")
-        self._client = QdrantClient(
-            url=self._uri,
-            api_key=self._opts.api_key,
-            timeout=self._opts.timeout,
-        )
+        if self._uri in {":memory:", "memory"}:
+            self._client = QdrantClient(":memory:")
+        else:
+            self._client = QdrantClient(
+                url=self._uri,
+                api_key=self._opts.api_key,
+                timeout=self._opts.timeout,
+            )
 
     def insert(
         self,
@@ -85,10 +89,15 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
             vector_id = entry.get("vector_id")
             if vector_id is None:
                 raise ValidationError(message="vector_id required for Qdrant inserts")
-            ids.append(str(vector_id))
-            payloads.append(entry)
+            vector_id_str = str(vector_id)
+            ids.append(vector_id_str)
+            payload = dict(entry)
+            payload.setdefault("vector_id", vector_id_str)
+            payloads.append(payload)
         points = [
-            qmodels.PointStruct(id=vector_id, vector=vector, payload=payload)
+            qmodels.PointStruct(
+                id=self._qdrant_id(vector_id), vector=vector, payload=payload
+            )
             for vector_id, vector, payload in zip(
                 ids, vectors_list, payloads, strict=False
             )
@@ -115,16 +124,21 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
             collection_name=self._opts.collection,
             query_vector=list(vector),
             limit=int(k),
-            with_payload=False,
+            with_payload=True,
             search_params=search_params,
             query_filter=qfilter,
         )
-        return [(str(item.id), float(item.score)) for item in results]
+        output: list[tuple[str, float]] = []
+        for item in results:
+            payload = getattr(item, "payload", None) or {}
+            vector_id = payload.get("vector_id", str(item.id))
+            output.append((str(vector_id), float(item.score)))
+        return output
 
     def delete(self, ids: Iterable[str]) -> int:
         if self._client is None:
             raise BackendCapabilityError(message="Qdrant client is not connected")
-        ids_list = [str(vector_id) for vector_id in ids]
+        ids_list = [self._qdrant_id(str(vector_id)) for vector_id in ids]
         if not ids_list:
             return 0
         self._client.delete(
@@ -223,6 +237,10 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
             timeout=timeout,
             filter_payload=filter_payload,
         )
+
+    @staticmethod
+    def _qdrant_id(vector_id: str) -> str:
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, vector_id))
 
 
 __all__ = ["QdrantVectorStoreAdapter"]
