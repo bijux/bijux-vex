@@ -2,6 +2,8 @@
 # Copyright © 2025 Bijan Mousavi
 from __future__ import annotations
 
+from dataclasses import replace
+
 from bijux_vex.core.contracts.ann_metadata import derive_metadata
 from bijux_vex.core.contracts.determinism import DeterminismReport
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
@@ -11,11 +13,17 @@ from bijux_vex.core.execution_result import (
     ExecutionCost,
     ExecutionResult,
     ExecutionStatus,
+    WitnessReport,
 )
 from bijux_vex.core.runtime.execution_session import ExecutionSession
 from bijux_vex.core.runtime.vector_execution import execution_signature
 from bijux_vex.core.types import Result
 from bijux_vex.domain.execution_requests.budget import apply_budget_outcomes
+from bijux_vex.domain.execution_requests.nd_quality import (
+    compute_distance_margin,
+    compute_rank_instability,
+    compute_similarity_entropy,
+)
 
 
 def randomness_audit(
@@ -84,6 +92,8 @@ def build_execution_result(
     randomness_sources: tuple[str, ...],
     randomness_budget: tuple[tuple[str, int | float], ...],
     randomness_envelopes: tuple[tuple[str, float], ...],
+    witness_report: WitnessReport | None = None,
+    witness_results: tuple[Result, ...] | None = None,
 ) -> ExecutionResult:
     signature = execution_signature(
         plan=session.plan,
@@ -100,6 +110,17 @@ def build_execution_result(
             actual_contract=session.request.execution_contract.value,
             notes=(failure_reason,) if failure_reason else (),
         )
+        if approximation is not None:
+            approx_rank_instability = compute_rank_instability(
+                results_buffer, witness_results
+            )
+            approximation = replace(
+                approximation,
+                rank_instability=approx_rank_instability,
+                distance_margin=compute_distance_margin(results_buffer),
+                similarity_entropy=compute_similarity_entropy(results_buffer),
+                witness_report=witness_report,
+            )
     execution_result = ExecutionResult(
         execution_id=session.execution.execution_id,
         signature=signature,

@@ -29,6 +29,14 @@ class ExecutionCost:
 
 
 @dataclass(frozen=True)
+class WitnessReport:
+    sample_k: int
+    overlap_ratio: float
+    rank_instability: float
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class ApproximationReport:
     recall_at_k: float
     rank_displacement: float
@@ -46,6 +54,10 @@ class ApproximationReport:
     error_kind: str = "none"
     allowed_rank_jitter: int = 0
     allowed_recall_drop: float = 0.0
+    rank_instability: float | None = None
+    distance_margin: float | None = None
+    similarity_entropy: float | None = None
+    witness_report: WitnessReport | None = None
 
 
 @dataclass(frozen=True)
@@ -90,4 +102,5 @@ __all__ = [
     "ExecutionCost",
     "ApproximationReport",
     "ExecutionStatus",
+    "WitnessReport",
 ]
