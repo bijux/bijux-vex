@@ -6,6 +6,8 @@
 
 **Vector execution runtime with replayable determinism + audited ANN (nothing implicit).**
 
+Why this exists: production vector search drifts quietly. Bijux‑Vex makes correctness explicit, and refuses when guarantees cannot be met.
+
 If you only read one page, read this: https://bijux.github.io/bijux-vex/user/only_read_one_page/
 
 ## Why bijux-vex
@@ -13,15 +15,6 @@ If you only read one page, read this: https://bijux.github.io/bijux-vex/user/onl
 - Replayable determinism for results you can defend
 - Audited, bounded ND (ANN) instead of silent approximation
 - Nothing implicit: fail‑closed by design
-
-## Concept map (instant mental model)
-
-```
-request → plan → execute → provenance
-            ├─ deterministic (exact)
-            └─ ND (ANN) + quality
-vector store: optional + explicit
-```
 
 ## Hello world (deterministic, exact)
 
@@ -45,6 +38,15 @@ bijux vex execute --artifact-id art-1 \
   --nd-witness sample --vector "[0.0, 1.0, 0.0]"
 ```
 
+## Concept map (instant mental model)
+
+```
+request → plan → execute → provenance
+            ├─ deterministic (exact)
+            └─ ND (ANN) + quality
+vector store: optional + explicit
+```
+
 ## When NOT to use this
 
 - Not a vector DB (no implicit CRUD or query language)
@@ -64,7 +66,8 @@ Include `bijux vex debug-bundle` output when reporting a bug.
 
 ## Quick links
 
-- Docs (Start Here): https://bijux.github.io/bijux-vex/user/start_here/
+- Start Here (10 minutes): https://bijux.github.io/bijux-vex/user/start_here_10_minutes/
+- Start Here (human): https://bijux.github.io/bijux-vex/user/start_here_human/
 - Concept Map: https://bijux.github.io/bijux-vex/user/concept_map/
 - ND Production Guide: https://bijux.github.io/bijux-vex/guides/nd_production/
 - Security Policy: https://github.com/bijux/bijux-vex/blob/main/SECURITY.md

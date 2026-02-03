@@ -8,12 +8,15 @@
 [![CI Status](https://github.com/bijux/bijux-vex/actions/workflows/ci.yml/badge.svg)](https://github.com/bijux/bijux-vex/actions)
 
 **What it is**  
-Bijux-Vex is a vector execution engine with explicit determinism contracts and provenance.
+Bijux‑Vex is a vector execution runtime with replayable determinism and audited ND (ANN).
 
-**Why it’s different**  
-Nothing is implicit: persistence, approximation, and randomness require explicit opt-in and are always recorded.
+**Why it exists**  
+Production vector search drifts quietly. Bijux‑Vex makes correctness explicit and refuses when guarantees cannot be met.
 
-## Quickstart
+**Anti‑goals**  
+Not a vector DB. Not a RAG framework. Not a hosted service. No implicit “best‑effort” correctness.
+
+## Quickstart (deterministic)
 
 ```bash
 python -m bijux_vex.boundaries.cli.app ingest --doc "hello" --vector "[0,1,0]" --vector-store memory
@@ -26,7 +29,19 @@ python -m bijux_vex.boundaries.cli.app execute --vector "[0,1,0]" \
 
 ## Start Here
 
-- Start here: `docs/user/start_here.md`
-- Tutorial: `docs/user/tutorial.md`
-- Contracts: `docs/contracts/backward_compatibility.md`, `docs/contracts/implicitness.md`
+- Start here (10 minutes): https://bijux.github.io/bijux-vex/user/start_here_10_minutes/
+- Start here (human): https://bijux.github.io/bijux-vex/user/start_here_human/
+- Why Bijux‑Vex exists: https://bijux.github.io/bijux-vex/user/why_bijux_vex_exists/
 - Docs home: https://bijux.github.io/bijux-vex/
+
+## Production readiness (explicit)
+
+- Determinism enforced and replayable
+- ND is bounded and audited
+- CI gates required before release
+
+## Project values
+
+- Correctness over convenience
+- Explicit over implicit
+- Honest failure over silent success
