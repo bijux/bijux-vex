@@ -18,12 +18,17 @@ from bijux_vex.core.types import (
     ExecutionRequest,
     Vector,
 )
-from bijux_vex.domain.execution_requests.execute import execute_request, start_execution_session
+from bijux_vex.domain.execution_requests.execute import (
+    execute_request,
+    start_execution_session,
+)
 from bijux_vex.infra.adapters.memory.backend import memory_backend
 from bijux_vex.services.policies.id_policy import ContentAddressedIdPolicy
 
 
-def _seed_backend(execution_contract: ExecutionContract) -> tuple[object, ExecutionArtifact]:
+def _seed_backend(
+    execution_contract: ExecutionContract,
+) -> tuple[object, ExecutionArtifact]:
     backend = memory_backend()
     policy = ContentAddressedIdPolicy()
     documents = ["alpha", "beta", "gamma"]
@@ -31,7 +36,9 @@ def _seed_backend(execution_contract: ExecutionContract) -> tuple[object, Execut
     with backend.tx_factory() as tx:
         for idx, text in enumerate(documents):
             doc_id = policy.document_id(text)
-            backend.stores.vectors.put_document(tx, Document(document_id=doc_id, text=text))
+            backend.stores.vectors.put_document(
+                tx, Document(document_id=doc_id, text=text)
+            )
             chunk_id = policy.chunk_id(doc_id, 0)
             backend.stores.vectors.put_chunk(
                 tx,
@@ -114,7 +121,11 @@ def run_ann() -> dict[str, object]:
         sources=("reference_ann_hnsw",),
         bounded=True,
         budget={"max_latency_ms": 10, "max_memory_mb": 10, "max_error": 0.5},
-        envelopes=(("max_latency_ms", 10.0), ("max_memory_mb", 10.0), ("max_error", 0.5)),
+        envelopes=(
+            ("max_latency_ms", 10.0),
+            ("max_memory_mb", 10.0),
+            ("max_error", 0.5),
+        ),
     )
     session = start_execution_session(
         artifact,

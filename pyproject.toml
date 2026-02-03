@@ -40,6 +40,13 @@ api = [
 ]
 llm = [
 ]
+embeddings = [
+  "sentence-transformers>=2.7.0,<3.0",
+]
+vectorstores = [
+  "faiss-cpu>=1.7.4,<2.0",
+  "numpy>=1.26,<3.0",
+]
 dev = [
   "types-PyYAML>=6.0.12,<7.0",
   "types-orjson>=3.6.0,<4.0",
@@ -106,6 +113,15 @@ Homepage = "https://bijux.github.io/bijux-vex/"
 Repository = "https://github.com/bijux/bijux-vex"
 Documentation = "https://bijux.github.io/bijux-vex/"
 Issues = "https://github.com/bijux/bijux-vex/issues"
+
+[project.entry-points."bijux_vex.vectorstores"]
+example = "bijux_vex.plugins.example:register_vectorstore"
+
+[project.entry-points."bijux_vex.embeddings"]
+example = "bijux_vex.plugins.example:register_embedding"
+
+[project.entry-points."bijux_vex.runners"]
+example = "bijux_vex.plugins.example:register_runner"
 
 [tool.hatch.version]
 source = "vcs"
