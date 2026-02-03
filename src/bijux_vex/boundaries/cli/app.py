@@ -78,6 +78,9 @@ ND_WARMUP_OPTION = typer.Option(
 ND_TUNE_CACHE_OPTION = typer.Option(
     None, "--cache", help="Optional path to cache tuning results"
 )
+ND_TUNE_DATASET_DIR_OPTION = typer.Option(
+    None, "--dataset-dir", help="Path to dataset directory for tuning"
+)
 
 
 @dataclass(frozen=True)
@@ -687,6 +690,9 @@ def execute(
     nd_outlier_threshold: float | None = typer.Option(
         None, "--nd-outlier-threshold", help="Low-signal similarity threshold"
     ),
+    nd_low_signal_margin: float | None = typer.Option(
+        None, "--nd-low-signal-margin", help="Low-signal distance margin threshold"
+    ),
     nd_adaptive_k: bool = typer.Option(
         False, "--nd-adaptive-k", help="Allow adaptive k below requested top_k"
     ),
@@ -709,6 +715,11 @@ def execute(
         None,
         "--nd-max-index-memory-mb",
         help="Hard cap for ANN index memory (MB)",
+    ),
+    nd_two_stage: bool = typer.Option(
+        True,
+        "--nd-two-stage/--no-nd-two-stage",
+        help="Enable ANN candidate rerank with exact scoring",
     ),
     nd_m: int | None = typer.Option(None, "--nd-m", help="HNSW M parameter"),
     nd_ef_construction: int | None = typer.Option(
@@ -779,6 +790,7 @@ def execute(
             nd_normalize_vectors=nd_normalize_vectors,
             nd_normalize_query=nd_normalize_query,
             nd_outlier_threshold=nd_outlier_threshold,
+            nd_low_signal_margin=nd_low_signal_margin,
             nd_adaptive_k=nd_adaptive_k,
             nd_low_signal_refuse=nd_low_signal_refuse,
             nd_replay_strict=nd_replay_strict,
@@ -786,6 +798,7 @@ def execute(
             nd_incremental_index=nd_incremental_index,
             nd_max_candidates=nd_max_candidates,
             nd_max_index_memory_mb=nd_max_index_memory_mb,
+            nd_two_stage=nd_two_stage,
             nd_m=nd_m,
             nd_ef_construction=nd_ef_construction,
             nd_ef_search=nd_ef_search,
@@ -1193,6 +1206,16 @@ def nd_tune(
     top_k: int = typer.Option(10, "--top-k"),
     samples: int = typer.Option(10, "--samples"),
     cache: Path | None = ND_TUNE_CACHE_OPTION,
+    dataset_dir: Path | None = ND_TUNE_DATASET_DIR_OPTION,
+    size: int = typer.Option(1000, "--size"),
+    dimension: int = typer.Option(DEFAULT_DIMENSION, "--dimension"),
+    query_count: int = typer.Option(DEFAULT_QUERY_COUNT, "--query-count"),
+    seed: int = typer.Option(DEFAULT_SEED, "--seed"),
+    use_existing: bool = typer.Option(
+        False,
+        "--use-existing",
+        help="Use existing store vectors instead of loading dataset",
+    ),
 ) -> None:
     try:
         engine = VectorExecutionEngine(
@@ -1205,9 +1228,30 @@ def nd_tune(
         if artifact is None:
             raise ValidationError(message="No artifact available for tuning")
         vectors = list(engine.stores.vectors.list_vectors())
+        queries: list[tuple[float, ...]] = []
+        if dataset_dir and not use_existing:
+            folder = dataset_folder(Path(dataset_dir), size, dimension, seed)
+            if not folder.exists():
+                dataset = generate_dataset(
+                    size=size,
+                    dimension=dimension,
+                    query_count=query_count,
+                    seed=seed,
+                )
+                save_dataset(dataset, folder)
+            dataset = load_dataset(folder)
+            engine.ingest(
+                IngestRequest(
+                    documents=dataset.documents,
+                    vectors=dataset.vectors.tolist(),
+                )
+            )
+            vectors = list(engine.stores.vectors.list_vectors())
+            queries = [tuple(q.tolist()) for q in dataset.queries[: max(1, samples)]]
         if not vectors:
             raise ValidationError(message="No vectors available for tuning")
-        queries = [tuple(v.values) for v in vectors[: max(1, samples)]]
+        if not queries:
+            queries = [tuple(v.values) for v in vectors[: max(1, samples)]]
         dim = vectors[0].dimension
         cache_key = fingerprint(
             {
@@ -1218,6 +1262,14 @@ def nd_tune(
                 "runner_version": getattr(ann_runner, "__version__", "unknown"),
                 "top_k": top_k,
                 "samples": samples,
+                "dataset": {
+                    "dir": str(dataset_dir) if dataset_dir else None,
+                    "size": size,
+                    "dimension": dimension,
+                    "query_count": query_count,
+                    "seed": seed,
+                    "use_existing": use_existing,
+                },
             }
         )
         if cache is not None and cache.exists():
@@ -1344,10 +1396,21 @@ def nd_tune(
             results,
             key=lambda r: (r["quality"]["overlap_at_k"], -r["latency_ms"]["mean"]),
         )
+        params = recommended["params"]
+        config_snippet = "\n".join(
+            [
+                "[nd]",
+                f"m = {params['m']}",
+                f"ef_construction = {params['ef_construction']}",
+                f"ef_search = {params['ef_search']}",
+                "two_stage = true",
+            ]
+        )
         payload = {
             "grid": results,
             "pareto_frontier": pareto,
             "recommended": recommended,
+            "config_snippet": config_snippet,
         }
         if cache is not None:
             cache_payload = {"cache_key": cache_key, "payload": payload}
@@ -1457,6 +1520,9 @@ def bench(
     baseline: Path | None = typer.Option(None, "--baseline"),  # noqa: B008
     fail_on_regression: bool = typer.Option(False, "--fail-on-regression"),
     regress_threshold: float = typer.Option(0.2, "--regress-threshold"),
+    overlap_regress_threshold: float = typer.Option(
+        0.05, "--overlap-regress-threshold"
+    ),
 ) -> None:
     try:
         if store not in {"memory", "vdb"}:
@@ -1497,6 +1563,19 @@ def bench(
                     "threshold_pct": regress_threshold * 100.0,
                     "regressed": slowdown > regress_threshold,
                 }
+                if "quality" in result and "quality" in baseline_payload:
+                    base_quality = baseline_payload.get("quality", {})
+                    if base_quality:
+                        overlap_delta = base_quality.get("overlap_at_k", 1.0) - result[
+                            "quality"
+                        ].get("overlap_at_k", 1.0)
+                        result["regression"]["overlap_drop"] = overlap_delta
+                        result["regression"]["overlap_threshold"] = (
+                            overlap_regress_threshold
+                        )
+                        result["regression"]["overlap_regressed"] = (
+                            overlap_delta > overlap_regress_threshold
+                        )
                 if slowdown > regress_threshold and fail_on_regression:
                     _emit(ctx, result, table=table)
                     sys.exit(2)
