@@ -134,6 +134,26 @@ def build_execution_result(
                 slo_met_recall = witness_report.overlap_ratio >= float(
                     nd_settings.target_recall
                 )
+            notes = []
+            if failure_reason == "nd_no_confident_neighbors":
+                notes.append("low_signal")
+            if failure_reason == "nd_low_signal_refused":
+                notes.append("low_signal_refused")
+            if failure_reason == "nd_adaptive_k":
+                notes.append("adaptive_k")
+            if witness_report is None:
+                notes.append("witness_not_measured")
+            overlap_estimate = (
+                witness_report.overlap_ratio if witness_report is not None else None
+            )
+            confidence_label = "medium_confidence"
+            if failure_reason in {"nd_no_confident_neighbors", "nd_low_signal_refused"}:
+                confidence_label = "low_confidence"
+            elif (
+                approx_rank_instability < 0.1
+                and compute_distance_margin(results_buffer) > 0.01
+            ):
+                confidence_label = "high_confidence"
             approximation = replace(
                 approximation,
                 rank_instability=approx_rank_instability,
@@ -146,6 +166,11 @@ def build_execution_result(
                 stability_signature=stability_signature(
                     session.artifact.metric, results_buffer
                 ),
+                overlap_estimate=overlap_estimate,
+                confidence_label=confidence_label,
+                low_signal_threshold=nd_settings.outlier_threshold
+                if nd_settings is not None
+                else None,
                 adaptive_k_used=failure_reason == "nd_adaptive_k",
                 low_signal=failure_reason == "nd_no_confident_neighbors",
                 returned_k=len(results_buffer),
@@ -154,6 +179,7 @@ def build_execution_result(
                 degraded=failure_reason
                 in {"nd_adaptive_k", "nd_no_confident_neighbors"},
                 degradation_reason=failure_reason,
+                notes=tuple(notes),
             )
     execution_result = ExecutionResult(
         execution_id=session.execution.execution_id,

@@ -20,6 +20,7 @@ from bijux_vex.core.runtime.execution_session import (
 from bijux_vex.core.types import ExecutionRequest, Result
 from bijux_vex.domain.execution_requests.budget import check_budget
 from bijux_vex.domain.execution_requests.plan import run_plan
+from bijux_vex.domain.execution_requests.scoring import tie_break_key
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
 from bijux_vex.infra.logging import log_event
 
@@ -88,13 +89,35 @@ def collect_results(
                     requested_k=session.request.top_k,
                 )
             if low_signal:
-                status = ExecutionStatus.PARTIAL
-                failure_reason = "nd_no_confident_neighbors"
-                log_event(
-                    "nd_low_signal",
-                    reason="outlier_threshold",
-                    returned_k=len(results_buffer),
-                    requested_k=session.request.top_k,
+                if session.request.nd_settings.low_signal_refuse:
+                    results_buffer = []
+                    status = ExecutionStatus.FAILED
+                    failure_reason = "nd_low_signal_refused"
+                    log_event(
+                        "nd_low_signal_refused",
+                        reason="outlier_threshold",
+                        requested_k=session.request.top_k,
+                    )
+                else:
+                    status = ExecutionStatus.PARTIAL
+                    failure_reason = "nd_no_confident_neighbors"
+                    log_event(
+                        "nd_low_signal",
+                        reason="outlier_threshold",
+                        returned_k=len(results_buffer),
+                        requested_k=session.request.top_k,
+                    )
+        if session.request.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+            results_buffer.sort(key=tie_break_key)
+            for idx, res in enumerate(results_buffer, start=1):
+                results_buffer[idx - 1] = Result(
+                    request_id=res.request_id,
+                    document_id=res.document_id,
+                    chunk_id=res.chunk_id,
+                    vector_id=res.vector_id,
+                    artifact_id=res.artifact_id,
+                    score=res.score,
+                    rank=idx,
                 )
         if (
             ann_runner is not None

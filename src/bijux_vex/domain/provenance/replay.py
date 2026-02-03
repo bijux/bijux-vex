@@ -89,6 +89,37 @@ def replay(
                 raise ReplayNotSupportedError(
                     message="Non-deterministic replay refused: ANN index hash mismatch"
                 )
+            if request.nd_settings and request.nd_settings.replay_strict:
+                if stored.approximation is None:
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: missing approximation report"
+                    )
+                if not current_info:
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: missing ANN index info"
+                    )
+                stored_algo = stored.approximation.algorithm
+                current_algo = current_info.get("index_kind")
+                if stored_algo and current_algo and stored_algo != current_algo:
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: ANN algorithm mismatch"
+                    )
+                stored_backend = stored.approximation.backend_version
+                current_backend = current_info.get("backend_version")
+                if (
+                    stored_backend
+                    and current_backend
+                    and stored_backend != current_backend
+                ):
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: ANN backend version mismatch"
+                    )
+                stored_params = dict(stored.approximation.index_parameters)
+                current_params = current_info.get("index_params", {})
+                if stored_params and current_params and stored_params != current_params:
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: ANN parameters mismatch"
+                    )
         session = start_execution_session(
             artifact,
             request,

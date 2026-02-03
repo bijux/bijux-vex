@@ -68,10 +68,14 @@ class ApproximationReport:
     candidate_k: int | None = None
     index_hash: str | None = None
     stability_signature: str | None = None
+    overlap_estimate: float | None = None
+    confidence_label: str | None = None
+    low_signal_threshold: float | None = None
     slo_met_latency: bool | None = None
     slo_met_recall: bool | None = None
     degraded: bool = False
     degradation_reason: str | None = None
+    notes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

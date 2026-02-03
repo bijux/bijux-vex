@@ -85,6 +85,7 @@ class NDSettings:
     latency_budget_ms: int | None = None
     witness_rate: float | None = None
     witness_sample_k: int | None = None
+    witness_mode: str | None = None
     build_on_demand: bool = False
     candidate_k: int | None = None
     diversity_lambda: float | None = None
@@ -92,11 +93,17 @@ class NDSettings:
     normalize_query: bool = False
     outlier_threshold: float | None = None
     adaptive_k: bool = False
+    low_signal_refuse: bool = False
     replay_strict: bool = False
     warmup_queries: str | None = None
     incremental_index: bool | None = None
     max_candidates: int | None = None
     max_index_memory_mb: int | None = None
+    m: int | None = None
+    ef_construction: int | None = None
+    ef_search: int | None = None
+    max_ef_search: int | None = None
+    space: str | None = None
 
 
 @dataclass(frozen=True)
@@ -187,6 +194,15 @@ class ExecutionRequest:
                     raise InvariantError(
                         message="nd_settings.witness_rate must be within (0,1]"
                     )
+                if self.nd_settings.witness_mode not in {
+                    None,
+                    "off",
+                    "sample",
+                    "full",
+                }:
+                    raise InvariantError(
+                        message="nd_settings.witness_mode must be off|sample|full"
+                    )
                 if (
                     self.nd_settings.witness_sample_k is not None
                     and self.nd_settings.witness_sample_k <= 0
@@ -200,6 +216,33 @@ class ExecutionRequest:
                 ):
                     raise InvariantError(
                         message="nd_settings.max_index_memory_mb must be positive"
+                    )
+                if self.nd_settings.m is not None and self.nd_settings.m <= 0:
+                    raise InvariantError(message="nd_settings.m must be positive")
+                if (
+                    self.nd_settings.ef_construction is not None
+                    and self.nd_settings.ef_construction <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.ef_construction must be positive"
+                    )
+                if (
+                    self.nd_settings.ef_search is not None
+                    and self.nd_settings.ef_search <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.ef_search must be positive"
+                    )
+                if (
+                    self.nd_settings.max_ef_search is not None
+                    and self.nd_settings.max_ef_search <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.max_ef_search must be positive"
+                    )
+                if self.nd_settings.space not in {None, "l2", "cosine", "ip"}:
+                    raise InvariantError(
+                        message="nd_settings.space must be l2|cosine|ip"
                     )
         if self.vector is not None:
             object.__setattr__(self, "vector", tuple(self.vector))

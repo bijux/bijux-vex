@@ -74,25 +74,33 @@ def execute_request(
         session.request.execution_contract is ExecutionContract.NON_DETERMINISTIC
         and ann_runner is not None
         and session.request.nd_settings is not None
-        and session.request.nd_settings.witness_rate is not None
     ):
-        rate = float(session.request.nd_settings.witness_rate)
-        if should_run_witness(
-            rate, session.randomness.seed if session.randomness else None
-        ):
-            sample_k = (
-                session.request.nd_settings.witness_sample_k or session.request.top_k
-            )
-            sample_k = max(1, min(sample_k, session.request.top_k))
-            witness_request = replace(session.request, top_k=sample_k)
-            witness_results = tuple(
-                ann_runner.deterministic_fallback(
-                    session.artifact.artifact_id, witness_request
+        mode = session.request.nd_settings.witness_mode or "sample"
+        if mode != "off":
+            run_witness = True
+            if mode == "sample":
+                rate = float(session.request.nd_settings.witness_rate or 0.0)
+                run_witness = should_run_witness(
+                    rate, session.randomness.seed if session.randomness else None
                 )
-            )
-            witness_report = build_witness_report(
-                results_buffer, witness_results, sample_k
-            )
+            if run_witness:
+                sample_k = (
+                    session.request.nd_settings.witness_sample_k
+                    or session.request.top_k
+                )
+                if mode == "full":
+                    sample_k = session.request.top_k
+                sample_k = max(1, min(sample_k, session.request.top_k))
+                witness_request = replace(session.request, top_k=sample_k)
+                witness_results = tuple(
+                    ann_runner.deterministic_fallback(
+                        session.artifact.artifact_id, witness_request
+                    )
+                )
+                witness_report = build_witness_report(
+                    results_buffer, witness_results, sample_k
+                )
+
     execution_result = build_execution_result(
         session=session,
         results_buffer=results_buffer,

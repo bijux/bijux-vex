@@ -237,6 +237,20 @@ class Orchestrator:
     def capabilities(self) -> dict[str, Any]:
         caps = getattr(self.stores, "capabilities", None)
         supports_ann = False
+        ann_runner = getattr(self.backend, "ann", None)
+        default_runner = None
+        if ann_runner is not None:
+            default_runner = (
+                "hnsw"
+                if ann_runner.__class__.__name__ == "HnswAnnRunner"
+                else "reference"
+            )
+        nd_health = {
+            "status": "open" if time.time() < self._nd_circuit_open_until else "closed",
+            "failures": self._nd_circuit_failures,
+            "open_until": self._nd_circuit_open_until,
+            "cooldown_s": self._nd_circuit_cooldown_s,
+        }
         if caps is not None:
             supports_ann = bool(
                 caps.supports_ann if caps.supports_ann is not None else caps.ann_support
@@ -299,6 +313,7 @@ class Orchestrator:
                 "isolation_level": None,
                 "execution_modes": execution_modes,
                 "ann_status": ann_status,
+                "nd": {"default_runner": default_runner, "health": nd_health},
                 "storage_backends": storage_backends,
                 "vector_stores": vector_stores,
                 "plugins": plugins,
@@ -317,6 +332,7 @@ class Orchestrator:
             "isolation_level": caps.isolation_level,
             "execution_modes": execution_modes,
             "ann_status": ann_status,
+            "nd": {"default_runner": default_runner, "health": nd_health},
             "storage_backends": storage_backends,
             "vector_stores": vector_stores,
             "plugins": plugins,
@@ -650,6 +666,7 @@ class Orchestrator:
                 latency_budget_ms=req.nd_latency_budget_ms,
                 witness_rate=req.nd_witness_rate,
                 witness_sample_k=req.nd_witness_sample_k,
+                witness_mode=req.nd_witness_mode,
                 build_on_demand=req.nd_build_on_demand,
                 candidate_k=req.nd_candidate_k,
                 diversity_lambda=req.nd_diversity_lambda,
@@ -657,11 +674,17 @@ class Orchestrator:
                 normalize_query=req.nd_normalize_query,
                 outlier_threshold=req.nd_outlier_threshold,
                 adaptive_k=req.nd_adaptive_k,
+                low_signal_refuse=req.nd_low_signal_refuse,
                 replay_strict=req.nd_replay_strict,
                 warmup_queries=req.nd_warmup_queries,
                 incremental_index=req.nd_incremental_index,
                 max_candidates=req.nd_max_candidates,
                 max_index_memory_mb=req.nd_max_index_memory_mb,
+                m=req.nd_m,
+                ef_construction=req.nd_ef_construction,
+                ef_search=req.nd_ef_search,
+                max_ef_search=req.nd_max_ef_search,
+                space=req.nd_space,
             )
             if (
                 req.nd_profile is not None
@@ -669,6 +692,7 @@ class Orchestrator:
                 or req.nd_latency_budget_ms is not None
                 or req.nd_witness_rate is not None
                 or req.nd_witness_sample_k is not None
+                or req.nd_witness_mode is not None
                 or req.nd_build_on_demand
                 or req.nd_candidate_k is not None
                 or req.nd_diversity_lambda is not None
@@ -676,11 +700,17 @@ class Orchestrator:
                 or req.nd_normalize_query
                 or req.nd_outlier_threshold is not None
                 or req.nd_adaptive_k
+                or req.nd_low_signal_refuse
                 or req.nd_replay_strict
                 or req.nd_warmup_queries is not None
                 or req.nd_incremental_index is not None
                 or req.nd_max_candidates is not None
                 or req.nd_max_index_memory_mb is not None
+                or req.nd_m is not None
+                or req.nd_ef_construction is not None
+                or req.nd_ef_search is not None
+                or req.nd_max_ef_search is not None
+                or req.nd_space is not None
             )
             else None
         )
@@ -737,6 +767,36 @@ class Orchestrator:
             )
             with self._tx() as tx:
                 self.stores.ledger.put_artifact(tx, artifact)
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and artifact.index_state == "ready"
+        ):
+            ann_runner = getattr(self.backend, "ann", None)
+            ann_info = (
+                ann_runner.index_info(artifact.artifact_id)
+                if ann_runner is not None and hasattr(ann_runner, "index_info")
+                else None
+            )
+            build_params = dict(artifact.build_params)
+            stored_hash = build_params.get("ann_index_hash")
+            current_hash = ann_info.get("index_hash") if ann_info else None
+            if stored_hash and current_hash and stored_hash != str(current_hash):
+                raise AnnIndexBuildError(
+                    message="ANN index drift detected (hash mismatch)"
+                )
+            if (
+                self._latest_vector_fingerprint
+                and self._latest_vector_fingerprint != artifact.vector_fingerprint
+            ):
+                raise AnnIndexBuildError(
+                    message="ANN index drift detected (vector fingerprint mismatch)"
+                )
+            if ann_info and "vector_count" in ann_info:
+                current_count = sum(1 for _ in self.stores.vectors.list_vectors())
+                if int(ann_info["vector_count"]) != int(current_count):
+                    raise AnnIndexBuildError(
+                        message="ANN index drift detected (vector count mismatch)"
+                    )
         randomness_budget = None
         if req.execution_budget:
             randomness_budget = {
@@ -856,14 +916,21 @@ class Orchestrator:
                 "execution_mode": req.execution_mode.value,
                 "nd_witness_rate": req.nd_witness_rate,
                 "nd_witness_sample_k": req.nd_witness_sample_k,
+                "nd_witness_mode": req.nd_witness_mode,
                 "nd_build_on_demand": req.nd_build_on_demand,
                 "nd_candidate_k": req.nd_candidate_k,
                 "nd_diversity_lambda": req.nd_diversity_lambda,
                 "nd_outlier_threshold": req.nd_outlier_threshold,
                 "nd_adaptive_k": req.nd_adaptive_k,
+                "nd_low_signal_refuse": req.nd_low_signal_refuse,
                 "nd_profile": req.nd_profile,
                 "nd_target_recall": req.nd_target_recall,
                 "nd_latency_budget_ms": req.nd_latency_budget_ms,
+                "nd_m": req.nd_m,
+                "nd_ef_construction": req.nd_ef_construction,
+                "nd_ef_search": req.nd_ef_search,
+                "nd_max_ef_search": req.nd_max_ef_search,
+                "nd_space": req.nd_space,
             },
             "backend": getattr(self.backend, "name", "unknown"),
             "vector_store": {
