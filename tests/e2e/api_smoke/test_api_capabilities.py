@@ -15,3 +15,6 @@ def test_api_capabilities_reports_backend():
     data = resp.json()
     assert "backend" in data and "supports_ann" in data
     assert isinstance(data["contracts"], list)
+    assert "execution_modes" in data and isinstance(data["execution_modes"], list)
+    assert data["ann_status"] in {"experimental", "unavailable", "stable"}
+    assert isinstance(data["storage_backends"], list)

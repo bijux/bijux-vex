@@ -361,6 +361,19 @@ components:
           - type: string
           - type: 'null'
           title: Isolation Level
+        execution_modes:
+          items:
+            type: string
+          type: array
+          title: Execution Modes
+        ann_status:
+          type: string
+          title: Ann Status
+        storage_backends:
+          items:
+            $ref: '#/components/schemas/StorageBackendDescriptor'
+          type: array
+          title: Storage Backends
       additionalProperties: false
       type: object
       required:
@@ -369,6 +382,34 @@ components:
       - deterministic_query
       - supports_ann
       - metrics
+      - execution_modes
+      - ann_status
+      - storage_backends
+      title: BackendCapabilitiesReport
+    StorageBackendDescriptor:
+      properties:
+        name:
+          type: string
+          title: Name
+        status:
+          type: string
+          title: Status
+        persistence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Persistence
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - status
+      title: StorageBackendDescriptor
     ValidationError:
       properties:
         loc:

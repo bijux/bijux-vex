@@ -2,10 +2,13 @@
 # Copyright © 2025 Bijan Mousavi
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import FastAPI, HTTPException
 
 from bijux_vex.boundaries.exception_bridge import to_http_status
 from bijux_vex.boundaries.pydantic_edges.models import (
+    BackendCapabilitiesReport,
     CreateRequest,
     ExecutionArtifactRequest,
     ExecutionRequestPayload,
@@ -19,10 +22,13 @@ from bijux_vex.services.execution_engine import VectorExecutionEngine
 def build_app() -> FastAPI:
     app = FastAPI(title="bijux-vex execution API", version="v1")
 
-    @app.get("/capabilities")  # type: ignore[untyped-decorator]
-    def capabilities() -> dict[str, object]:
+    @app.get("/capabilities", response_model=BackendCapabilitiesReport)  # type: ignore[untyped-decorator]
+    def capabilities() -> BackendCapabilitiesReport:
         engine = VectorExecutionEngine()
-        return engine.capabilities()
+        return cast(
+            BackendCapabilitiesReport,
+            BackendCapabilitiesReport.model_validate(engine.capabilities()),
+        )
 
     @app.post("/create")  # type: ignore[untyped-decorator]
     def create(req: CreateRequest) -> dict[str, object]:

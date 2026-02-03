@@ -116,6 +116,36 @@ class Orchestrator:
 
     def capabilities(self) -> dict[str, Any]:
         caps = getattr(self.backend.stores, "capabilities", None)
+        supports_ann = False
+        if caps is not None:
+            supports_ann = bool(
+                caps.supports_ann if caps.supports_ann is not None else caps.ann_support
+            )
+        ann_status = "experimental" if supports_ann else "unavailable"
+        execution_modes = [mode.value for mode in ExecutionMode]
+        storage_backends = [
+            {
+                "name": "memory",
+                "status": "stable",
+                "persistence": "ephemeral",
+            },
+            {
+                "name": "sqlite",
+                "status": "stable",
+                "persistence": "local",
+            },
+            {
+                "name": "hnsw",
+                "status": "experimental",
+                "persistence": "local",
+            },
+            {
+                "name": "pgvector",
+                "status": "experimental_excluded",
+                "persistence": "external",
+                "notes": "excluded from v1 freeze",
+            },
+        ]
         if caps is None:
             return {
                 "backend": getattr(self.backend, "name", "unknown"),
@@ -126,6 +156,9 @@ class Orchestrator:
                 "metrics": [],
                 "max_vector_size": None,
                 "isolation_level": None,
+                "execution_modes": execution_modes,
+                "ann_status": ann_status,
+                "storage_backends": storage_backends,
             }
         return {
             "backend": getattr(self.backend, "name", "unknown"),
@@ -134,13 +167,14 @@ class Orchestrator:
                 for c in (caps.contracts or [])
             ),
             "deterministic_query": caps.deterministic_query,
-            "supports_ann": bool(
-                caps.supports_ann if caps.supports_ann is not None else caps.ann_support
-            ),
+            "supports_ann": supports_ann,
             "replayable": caps.replayable,
             "metrics": sorted(caps.metrics or []),
             "max_vector_size": caps.max_vector_size,
             "isolation_level": caps.isolation_level,
+            "execution_modes": execution_modes,
+            "ann_status": ann_status,
+            "storage_backends": storage_backends,
         }
 
     def create(self, req: CreateRequest) -> dict[str, Any]:
@@ -241,6 +275,11 @@ class Orchestrator:
         return {
             "artifact_id": artifact.artifact_id,
             "execution_contract": artifact.execution_contract.value,
+            "execution_contract_status": (
+                "stable"
+                if artifact.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
             "replayable": artifact.replayable,
         }
 
@@ -337,6 +376,11 @@ class Orchestrator:
         return {
             "results": [r.vector_id for r in results],
             "execution_contract": artifact.execution_contract.value,
+            "execution_contract_status": (
+                "stable"
+                if artifact.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
             "replayable": artifact.replayable,
             "execution_id": execution_result.execution_id,
         }
@@ -388,6 +432,11 @@ class Orchestrator:
             "metric": artifact_meta.metric,
             "score": target.score,
             "execution_contract": artifact_meta.execution_contract.value,
+            "execution_contract_status": (
+                "stable"
+                if artifact_meta.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
             "replayable": artifact_meta.replayable,
             "execution_id": exec_result.execution_id,
         }
@@ -439,6 +488,11 @@ class Orchestrator:
             "details": outcome.details,
             "nondeterministic_sources": outcome.nondeterministic_sources,
             "execution_contract": artifact.execution_contract.value,
+            "execution_contract_status": (
+                "stable"
+                if artifact.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
             "replayable": artifact.replayable,
             "execution_id": outcome.execution_id,
         }
@@ -506,4 +560,16 @@ class Orchestrator:
             "overlap_ratio": diff.overlap_ratio,
             "recall_delta": diff.recall_delta,
             "rank_instability": diff.rank_instability,
+            "execution_a_contract": art_a.execution_contract.value,
+            "execution_b_contract": art_b.execution_contract.value,
+            "execution_a_contract_status": (
+                "stable"
+                if art_a.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
+            "execution_b_contract_status": (
+                "stable"
+                if art_b.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
         }

@@ -97,3 +97,24 @@ class ExecutionArtifactRequest(StrictModel):
 class ExplainRequest(StrictModel):
     result_id: str = Field(min_length=1)
     artifact_id: str | None = None
+
+
+class StorageBackendDescriptor(StrictModel):
+    name: str
+    status: str
+    persistence: str | None = None
+    notes: str | None = None
+
+
+class BackendCapabilitiesReport(StrictModel):
+    backend: str
+    contracts: list[str]
+    deterministic_query: bool | None
+    supports_ann: bool
+    replayable: bool | None
+    metrics: list[str]
+    max_vector_size: int | None
+    isolation_level: str | None
+    execution_modes: list[str]
+    ann_status: str
+    storage_backends: list[StorageBackendDescriptor]

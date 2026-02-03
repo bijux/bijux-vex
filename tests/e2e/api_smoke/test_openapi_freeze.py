@@ -8,7 +8,7 @@ from bijux_vex.core.canon import canon
 from bijux_vex.core.identity.ids import fingerprint
 
 EXPECTED_OPENAPI_FINGERPRINT = (
-    "27c18591bd336e8d4664ae9258d32d6547e1550832e4b0b61cb531b51b6fc348"
+    "a69d1f713746588ae1c1b232e77e0ba613a4e3032a93d41d0029421251605841"
 )
 
 
