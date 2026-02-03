@@ -9,7 +9,6 @@ import time
 
 from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
-from bijux_vex.core.errors import BudgetExceededError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.execution_result import ApproximationReport
@@ -17,7 +16,6 @@ from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.types import (
     ExecutionArtifact,
     ExecutionRequest,
-    NDSettings,
     Result,
     Vector,
 )
@@ -66,13 +64,6 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         if not vectors_list:
             return {}
         dim = vectors_list[0].dimension
-        if isinstance(nd_settings, NDSettings) and nd_settings.max_index_memory_mb:
-            estimated_mb = (len(vectors_list) * dim * 8) / (1024 * 1024)
-            if estimated_mb > float(nd_settings.max_index_memory_mb):
-                raise BudgetExceededError(
-                    message="ANN index memory estimate exceeds limit",
-                    dimension="memory",
-                )
         ids = [vec.vector_id for vec in vectors_list]
         index_hash = fingerprint(
             {

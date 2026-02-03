@@ -17,7 +17,6 @@ from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.errors import (
     AnnIndexBuildError,
     BudgetExceededError,
-    CorruptArtifactError,
     ValidationError,
 )
 from bijux_vex.core.execution_result import ApproximationReport
@@ -30,6 +29,8 @@ from bijux_vex.core.types import (
     Vector,
 )
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
+from bijux_vex.infra.adapters.hnsw.metadata import as_dict, validate_index_meta
+from bijux_vex.infra.adapters.hnsw.params import as_int, resolve_space
 from bijux_vex.infra.logging import log_event
 
 
@@ -111,7 +112,7 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
                     message="ANN index memory estimate exceeds limit",
                     dimension="memory",
                 )
-        space = _resolve_space(metric, settings.space if settings else None)
+        space = resolve_space(metric, settings.space if settings else None)
         m_val = settings.m if settings and settings.m is not None else 16
         ef_construction = (
             settings.ef_construction if settings and settings.ef_construction else 100
@@ -223,11 +224,11 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
         results: Iterable[Result],
     ) -> ApproximationReport:
         materialized = tuple(results)
-        index_info = _as_dict(self._index_info.get(artifact.artifact_id))
+        index_info = as_dict(self._index_info.get(artifact.artifact_id))
         index_hash = index_info.get("index_hash") if index_info else None
         if index_hash is not None:
             index_hash = str(index_hash)
-        index_params = _as_dict(index_info.get("index_params"))
+        index_params = as_dict(index_info.get("index_params"))
         return ApproximationReport(
             recall_at_k=0.0,
             rank_displacement=0.0,
@@ -280,8 +281,8 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
             )
         if self._index is None:
             raise AnnIndexBuildError(message="HNSW index missing; build required")
-        index_info = _as_dict(self._index_info.get(artifact.artifact_id))
-        dim = _as_int(index_info.get("dimension"), 0)
+        index_info = as_dict(self._index_info.get(artifact.artifact_id))
+        dim = as_int(index_info.get("dimension"), 0)
         query = request.vector or ()
         if dim and len(query) != dim:
             raise ValidationError(message="query vector dimension mismatch")
@@ -312,8 +313,8 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
                 message="ANN candidate budget exceeded",
                 dimension="candidates",
             )
-        index_params = _as_dict(index_info.get("index_params"))
-        ef_search = _as_int(index_params.get("ef_search"), 50)
+        index_params = as_dict(index_info.get("index_params"))
+        ef_search = as_int(index_params.get("ef_search"), 50)
         if request.nd_settings and request.nd_settings.ef_search is not None:
             ef_search = int(request.nd_settings.ef_search)
         if request.nd_settings and request.nd_settings.max_ef_search is not None:
@@ -396,7 +397,12 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
             meta = json.loads(meta_file.read_text(encoding="utf-8"))
         except Exception as exc:  # pragma: no cover
             raise CorruptArtifactError(message="HNSW index metadata corrupted") from exc
-        _validate_index_meta(artifact, meta, settings)
+        validate_index_meta(
+            artifact,
+            meta,
+            settings,
+            index_version=HnswAnnRunner.INDEX_VERSION,
+        )
         if settings and settings.max_index_memory_mb:
             dim = int(meta.get("dimension", 0) or 0)
             count = int(meta.get("vector_count", 0) or 0)
@@ -453,73 +459,6 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
             except ValueError:
                 return None
         return None
-
-
-def _resolve_space(metric: str, override: str | None) -> str:
-    if override:
-        return override
-    if metric == "l2":
-        return "l2"
-    if metric == "cosine":
-        return "cosine"
-    if metric == "dot":
-        return "ip"
-    return "l2"
-
-
-def _as_dict(value: object) -> dict[str, object]:
-    return value if isinstance(value, dict) else {}
-
-
-def _as_int(value: object, default: int) -> int:
-    if isinstance(value, bool):
-        return default
-    if isinstance(value, (int, float)):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return default
-    return default
-
-
-def _validate_index_meta(
-    artifact: ExecutionArtifact, meta: dict[str, object], settings: NDSettings | None
-) -> None:
-    if _as_int(meta.get("index_version"), 0) != HnswAnnRunner.INDEX_VERSION:
-        raise CorruptArtifactError(message="HNSW index version mismatch")
-    if _as_int(meta.get("dimension"), 0) <= 0:
-        raise CorruptArtifactError(message="HNSW index metadata missing dimension")
-    if meta.get("metric") != artifact.metric:
-        raise ValidationError(message="HNSW index metric mismatch")
-    if settings and settings.space and meta.get("space") != settings.space:
-        raise ValidationError(message="HNSW index space mismatch")
-    params = _as_dict(meta.get("index_params"))
-    if (
-        settings
-        and settings.m is not None
-        and _as_int(params.get("M"), 0) != int(settings.m)
-    ):
-        raise ValidationError(message="HNSW index M mismatch")
-    if (
-        settings
-        and settings.ef_construction is not None
-        and _as_int(params.get("ef_construction"), 0) != int(settings.ef_construction)
-    ):
-        raise ValidationError(message="HNSW index ef_construction mismatch")
-    if (
-        settings
-        and settings.ef_search is not None
-        and _as_int(params.get("ef_search"), 0) != int(settings.ef_search)
-    ):
-        raise ValidationError(message="HNSW index ef_search mismatch")
-    if (
-        settings
-        and settings.max_ef_search is not None
-        and _as_int(params.get("ef_search"), 0) > int(settings.max_ef_search)
-    ):
-        raise ValidationError(message="HNSW index ef_search exceeds max_ef_search cap")
 
 
 __all__ = ["HnswAnnRunner"]
