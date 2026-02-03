@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import json
 from typing import Any
 
 from bijux_vex.contracts.resources import VectorSource
@@ -12,6 +13,7 @@ from bijux_vex.core.types import Chunk, Document, ExecutionRequest, Result, Vect
 from bijux_vex.domain.execution_requests import scoring
 from bijux_vex.infra.adapters.vectorstore_metadata import build_vectorstore_metadata
 from bijux_vex.infra.adapters.vectorstore_registry import VectorStoreResolution
+from bijux_vex.infra.logging import log_event
 
 
 class VectorStoreVectorSource(VectorSource):
@@ -92,14 +94,20 @@ class VectorStoreVectorSource(VectorSource):
         options = getattr(self._adapter, "options", None)
         if options is None:
             options = getattr(self._adapter, "_options", None)
-        if (
-            isinstance(options, dict)
-            and "filter" in options
-            and not self._resolved.descriptor.filtering_supported
-        ):
-            raise BackendCapabilityError(
-                message="Vector store filtering requested but backend does not support filters"
-            )
+        filter_spec: dict[str, Any] | None = None
+        if isinstance(options, dict) and "filter" in options:
+            raw_filter = options["filter"]
+            if isinstance(raw_filter, str):
+                try:
+                    filter_spec = json.loads(raw_filter)
+                except json.JSONDecodeError as exc:
+                    raise ValidationError(
+                        message="Invalid filter JSON payload"
+                    ) from exc
+            elif isinstance(raw_filter, dict):
+                filter_spec = dict(raw_filter)
+            else:
+                raise ValidationError(message="Unsupported filter payload type")
         classify_execution(
             contract=request.execution_contract,
             randomness=None,
@@ -127,6 +135,24 @@ class VectorStoreVectorSource(VectorSource):
                     rank=0,
                 )
             )
+        if filter_spec and not self._resolved.descriptor.filtering_supported:
+            supported_keys = {"doc_id", "chunk_id", "source_uri", "tags"}
+            unknown = set(filter_spec) - supported_keys
+            if unknown:
+                raise BackendCapabilityError(
+                    message="Vector store filtering requested but backend does not support filters"
+                )
+            log_event(
+                "filter_postprocess",
+                backend=self._resolved.descriptor.name,
+                warning="post-filter applied in-memory; performance may degrade",
+            )
+            filtered: list[Result] = []
+            for res in results:
+                if not self._matches_filter(res, filter_spec):
+                    continue
+                filtered.append(res)
+            results = filtered
         results.sort(key=scoring.tie_break_key)
         limited = results[: request.top_k]
         for idx, res in enumerate(limited, start=1):
@@ -150,6 +176,42 @@ class VectorStoreVectorSource(VectorSource):
                 message="Vector store backend does not support deletes"
             )
         self._adapter.delete([vector_id])
+
+    def _matches_filter(self, result: Result, filter_spec: dict[str, Any]) -> bool:
+        doc_id = result.document_id
+        chunk_id = result.chunk_id
+        document = self._base.get_document(doc_id) if doc_id else None
+        source_uri = document.source if document else None
+        tags = filter_spec.get("tags")
+        if "doc_id" in filter_spec:
+            expected = filter_spec["doc_id"]
+            if isinstance(expected, (list, tuple, set)):
+                if doc_id not in expected:
+                    return False
+            elif doc_id != expected:
+                return False
+        if "chunk_id" in filter_spec:
+            expected = filter_spec["chunk_id"]
+            if isinstance(expected, (list, tuple, set)):
+                if chunk_id not in expected:
+                    return False
+            elif chunk_id != expected:
+                return False
+        if "source_uri" in filter_spec:
+            expected = filter_spec["source_uri"]
+            if source_uri != expected:
+                return False
+        if tags is not None:
+            if not isinstance(tags, (list, tuple, set)):
+                tags = [tags]
+            vector = self._base.get_vector(result.vector_id)
+            vector_tags = set()
+            if vector and vector.metadata:
+                meta_dict = dict(vector.metadata)
+                vector_tags = set(meta_dict.get("tags", ()))
+            if not set(tags).issubset(vector_tags):
+                return False
+        return True
 
 
 __all__ = ["VectorStoreVectorSource"]

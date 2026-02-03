@@ -6,7 +6,7 @@ from typing import Any
 
 from bijux_vex.core.errors import ValidationError
 
-CURRENT_VECTOR_METADATA_VERSION = 1
+CURRENT_VECTOR_METADATA_VERSION = 2
 
 
 def migrate_vector_metadata(payload: dict[str, Any]) -> dict[str, Any]:
@@ -31,10 +31,15 @@ def migrate_vector_metadata(payload: dict[str, Any]) -> dict[str, Any]:
         migrated["source_uri"] = migrated.get("source_uri")
         migrated["created_at"] = migrated.get("created_at")
         migrated["embedding"] = migrated.get("embedding") or {}
+        migrated["embedding_ref"] = migrated.get("embedding_ref") or {}
         tags = migrated.get("tags") or []
         if not isinstance(tags, (list, tuple)):
             tags = [str(tags)]
         migrated["tags"] = list(tags)
+        migrated["schema_version"] = 1
+        version = 1
+    if version < 2:
+        migrated["embedding_ref"] = migrated.get("embedding_ref") or {}
         migrated["schema_version"] = CURRENT_VECTOR_METADATA_VERSION
     return migrated
 

@@ -48,6 +48,16 @@ class QdrantVectorStoreAdapter(VectorStoreAdapter):
     def options(self) -> dict[str, str]:
         return dict(self._options_raw)
 
+    @property
+    def index_params(self) -> dict[str, object]:
+        return {
+            "collection": self._opts.collection,
+            "batch_size": self._opts.batch_size,
+            "retry_count": self._opts.retry_count,
+            "backoff_ms": self._opts.backoff_ms,
+            "timeout": self._opts.timeout,
+        }
+
     def connect(self) -> None:
         if QdrantClient is None:  # pragma: no cover - defensive
             raise ImportError("qdrant-client is not available")

@@ -17,6 +17,7 @@ class VectorStoreMetadata:
     source_uri: str | None
     created_at: str
     embedding: dict[str, str | None]
+    embedding_ref: dict[str, str | None]
     tags: tuple[str, ...]
 
 
@@ -28,6 +29,11 @@ def build_vectorstore_metadata(
     tags: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     embedding_meta = dict(vector.metadata or ())
+    embedding_ref = {
+        "provider": embedding_meta.get("embedding_provider"),
+        "model": vector.model,
+        "version": embedding_meta.get("embedding_model_version"),
+    }
     return {
         "schema_version": CURRENT_VECTOR_METADATA_VERSION,
         "doc_id": document_id,
@@ -35,6 +41,7 @@ def build_vectorstore_metadata(
         "source_uri": source_uri,
         "created_at": datetime.now(UTC).isoformat(),
         "embedding": embedding_meta,
+        "embedding_ref": embedding_ref,
         "tags": list(tags or ()),
     }
 

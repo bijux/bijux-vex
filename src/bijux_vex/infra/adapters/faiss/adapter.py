@@ -20,6 +20,7 @@ import numpy as np
 from bijux_vex.core.errors import (
     BackendCapabilityError,
     BackendUnavailableError,
+    ConflictError,
     CorruptArtifactError,
     DeterminismViolationError,
     ValidationError,
@@ -158,6 +159,14 @@ class FaissVectorStoreAdapter(VectorStoreAdapter):
             self._dimension = dim
         if dim != self._dimension:
             raise ValidationError(message="Vector dimensionality mismatch for FAISS")
+        if len(set(vector_ids)) != len(vector_ids):
+            raise ConflictError(message="Duplicate vector_id detected in insert batch")
+        existing_ids = {record.vector_id for record in self._records}
+        overlap = existing_ids.intersection(vector_ids)
+        if overlap:
+            raise ConflictError(
+                message="Vector store already contains one or more vector_id values"
+            )
         if self._lock_path:
             with FaissIndexLock(self._lock_path):
                 self._append_records(records)
