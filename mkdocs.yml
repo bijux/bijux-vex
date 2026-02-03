@@ -115,6 +115,7 @@ nav:
       - Audit Narrative: examples/audit_narrative.md
   - Maintainer:
       - Changelog: changelog.md
+      - Benchmarks: maintainer/benchmarks.md
       - Release Process: maintainer/release_process.md
       - Release Checklist: maintainer/release_checklist.md
       - Release Dry Run: maintainer/release_dry_run.md

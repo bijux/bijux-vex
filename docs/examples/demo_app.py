@@ -49,6 +49,7 @@ def main() -> None:
             "/artifact",
             json={
                 "execution_contract": "non_deterministic",
+                "index_mode": "ann",
                 "vector_store": "faiss",
                 "vector_store_uri": index_path,
             },
@@ -86,6 +87,7 @@ def main() -> None:
                     "sources": ["ann_probe"],
                     "bounded": True,
                 },
+                "nd_build_on_demand": True,
                 "vector_store": "faiss",
                 "vector_store_uri": index_path,
             },

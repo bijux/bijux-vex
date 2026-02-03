@@ -286,26 +286,26 @@
     {
       "store_backend": "faiss",
       "mode": "exact",
-      "status": "unavailable",
-      "notes": "faiss-cpu not installed on baseline host"
+      "status": "todo",
+      "notes": "TODO: generate baseline on a faster host (FAISS exact)."
     },
     {
       "store_backend": "faiss",
       "mode": "ann",
-      "status": "unavailable",
-      "notes": "faiss-cpu not installed on baseline host"
+      "status": "todo",
+      "notes": "TODO: generate baseline on a faster host (FAISS ann)."
     },
     {
       "store_backend": "qdrant",
       "mode": "exact",
-      "status": "unavailable",
-      "notes": "qdrant not available on baseline host"
+      "status": "todo",
+      "notes": "TODO: generate baseline on a faster host (Qdrant exact)."
     },
     {
       "store_backend": "qdrant",
       "mode": "ann",
-      "status": "unavailable",
-      "notes": "qdrant not available on baseline host"
+      "status": "todo",
+      "notes": "TODO: generate baseline on a faster host (Qdrant ann)."
     }
   ]
 }
