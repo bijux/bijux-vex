@@ -48,6 +48,7 @@ from bijux_vex.core.types import (
     ExecutionArtifact,
     ExecutionBudget,
     ExecutionRequest,
+    NDSettings,
     Vector,
 )
 from bijux_vex.domain.execution_requests.compare import compare_executions
@@ -618,6 +619,17 @@ class Orchestrator:
                 if req.execution_budget
                 else None,
             ),
+            nd_settings=NDSettings(
+                profile=req.nd_profile,
+                target_recall=req.nd_target_recall,
+                latency_budget_ms=req.nd_latency_budget_ms,
+            )
+            if (
+                req.nd_profile is not None
+                or req.nd_target_recall is not None
+                or req.nd_latency_budget_ms is not None
+            )
+            else None,
         )
         session = start_execution_session(
             artifact,

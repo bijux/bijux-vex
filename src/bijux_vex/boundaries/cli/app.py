@@ -627,6 +627,15 @@ def execute(
     max_error: float | None = typer.Option(None, "--max-error"),
     vector_store: str | None = typer.Option(None, "--vector-store"),
     vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+    nd_profile: str | None = typer.Option(
+        None, "--nd-profile", help="ND search profile: fast|balanced|accurate"
+    ),
+    nd_target_recall: float | None = typer.Option(
+        None, "--nd-target-recall", help="ND target recall (0-1]"
+    ),
+    nd_latency_budget_ms: int | None = typer.Option(
+        None, "--nd-latency-budget-ms", help="ND latency budget in ms"
+    ),
     correlation_id: str | None = typer.Option(None, "--correlation-id"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     explain: bool = typer.Option(False, "--explain"),
@@ -664,6 +673,9 @@ def execute(
                 max_memory_mb=max_memory_mb,
                 max_error=max_error,
             ),
+            nd_profile=nd_profile,
+            nd_target_recall=nd_target_recall,
+            nd_latency_budget_ms=nd_latency_budget_ms,
             correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,

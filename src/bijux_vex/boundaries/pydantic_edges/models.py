@@ -64,6 +64,9 @@ class ExecutionRequestPayload(StrictModel):
     execution_mode: ExecutionMode = ExecutionMode.STRICT
     execution_budget: ExecutionBudgetPayload | None = None
     randomness_profile: RandomnessProfilePayload | None = None
+    nd_profile: str | None = None
+    nd_target_recall: float | None = None
+    nd_latency_budget_ms: int | None = None
     correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
@@ -98,11 +101,25 @@ class ExecutionRequestPayload(StrictModel):
         if self.execution_contract is ExecutionContract.DETERMINISTIC:
             if self.execution_mode is not ExecutionMode.STRICT:
                 raise ValueError("deterministic executions require strict mode")
+            if (
+                self.nd_profile is not None
+                or self.nd_target_recall is not None
+                or self.nd_latency_budget_ms is not None
+            ):
+                raise ValueError("nd_* settings require non_deterministic execution")
         else:
             if self.execution_mode is ExecutionMode.STRICT:
                 raise ValueError(
                     "non_deterministic executions require bounded or exploratory mode"
                 )
+            if self.nd_profile not in {None, "fast", "balanced", "accurate"}:
+                raise ValueError("nd_profile must be fast|balanced|accurate")
+            if self.nd_target_recall is not None and not (
+                0.0 < self.nd_target_recall <= 1.0
+            ):
+                raise ValueError("nd_target_recall must be within (0,1]")
+            if self.nd_latency_budget_ms is not None and self.nd_latency_budget_ms <= 0:
+                raise ValueError("nd_latency_budget_ms must be positive")
         return self
 
 
