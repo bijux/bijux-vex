@@ -1,34 +1,157 @@
 {
+  "ann_status": "experimental",
+  "backend": "sqlite",
   "contracts": [
     "deterministic"
   ],
+  "deterministic_query": true,
   "execution_modes": [
     "strict",
     "bounded",
     "exploratory"
   ],
-  "ann_status": "unavailable",
+  "isolation_level": "process",
+  "max_vector_size": 4096,
+  "metrics": [
+    "l2"
+  ],
+  "plugins": {
+    "embeddings": [
+      {
+        "entrypoint": "example",
+        "group": "bijux_vex.embeddings",
+        "name": "bijux-vex",
+        "status": "failed",
+        "version": "0.1.1.dev29",
+        "warning": "partially initialized module 'bijux_vex.plugins.example' has no attribute 'register_embedding' (most likely due to a circular import)"
+      }
+    ],
+    "runners": [
+      {
+        "approximation": false,
+        "determinism": "deterministic",
+        "entrypoint": "example",
+        "group": "bijux_vex.runners",
+        "name": "example",
+        "randomness_sources": [],
+        "source": "bijux-vex",
+        "status": "loaded",
+        "version": "0.1.1.dev29"
+      }
+    ],
+    "vectorstores": [
+      {
+        "approximation": false,
+        "capabilities": {
+          "delete_supported": true,
+          "filtering_supported": false,
+          "supports_ann": false,
+          "supports_exact": true
+        },
+        "determinism": "deterministic_exact",
+        "entrypoint": "example",
+        "group": "bijux_vex.vectorstores",
+        "name": "example",
+        "randomness_sources": [],
+        "source": "bijux-vex",
+        "status": "loaded",
+        "version": "0.1.1.dev29"
+      }
+    ]
+  },
+  "replayable": true,
   "storage_backends": [
     {
       "name": "memory",
-      "status": "stable",
-      "persistence": "ephemeral"
+      "notes": null,
+      "persistence": "ephemeral",
+      "status": "stable"
     },
     {
       "name": "sqlite",
-      "status": "stable",
-      "persistence": "local"
+      "notes": null,
+      "persistence": "local",
+      "status": "stable"
     },
     {
       "name": "hnsw",
-      "status": "experimental",
-      "persistence": "local"
+      "notes": null,
+      "persistence": "local",
+      "status": "experimental"
     },
     {
       "name": "pgvector",
-      "status": "experimental_excluded",
+      "notes": "excluded from v1 freeze",
       "persistence": "external",
-      "notes": "excluded from v1 freeze"
+      "status": "experimental_excluded"
+    }
+  ],
+  "supports_ann": true,
+  "vector_stores": [
+    {
+      "available": true,
+      "consistency": "read_after_write",
+      "delete_supported": true,
+      "deterministic_exact": true,
+      "experimental": true,
+      "filtering_supported": false,
+      "name": "example",
+      "notes": "example plugin adapter",
+      "supports_ann": false,
+      "supports_exact": true,
+      "version": null
+    },
+    {
+      "available": true,
+      "consistency": "read_after_write",
+      "delete_supported": true,
+      "deterministic_exact": true,
+      "experimental": true,
+      "filtering_supported": false,
+      "name": "faiss",
+      "notes": null,
+      "supports_ann": true,
+      "supports_exact": true,
+      "version": "1.13.2"
+    },
+    {
+      "available": true,
+      "consistency": "read_after_write",
+      "delete_supported": true,
+      "deterministic_exact": true,
+      "experimental": false,
+      "filtering_supported": false,
+      "name": "memory",
+      "notes": "no-op adapter; uses local vector source",
+      "supports_ann": false,
+      "supports_exact": true,
+      "version": null
+    },
+    {
+      "available": true,
+      "consistency": "eventual",
+      "delete_supported": true,
+      "deterministic_exact": false,
+      "experimental": true,
+      "filtering_supported": true,
+      "name": "qdrant",
+      "notes": null,
+      "supports_ann": true,
+      "supports_exact": true,
+      "version": null
+    },
+    {
+      "available": true,
+      "consistency": "read_after_write",
+      "delete_supported": true,
+      "deterministic_exact": true,
+      "experimental": false,
+      "filtering_supported": false,
+      "name": "sqlite",
+      "notes": "alias for local storage (no-op adapter)",
+      "supports_ann": false,
+      "supports_exact": true,
+      "version": null
     }
   ]
 }

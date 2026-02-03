@@ -477,6 +477,15 @@
         "required": false
       },
       {
+        "default": false,
+        "name": "nd_build_on_demand",
+        "opts": [
+          "--nd-build-on-demand"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": null,
         "name": "nd_latency_budget_ms",
         "opts": [
@@ -526,6 +535,15 @@
         "name": "randomness_bounded",
         "opts": [
           "--randomness-bounded"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "randomness_non_replayable",
+        "opts": [
+          "--randomness-non-replayable"
         ],
         "param_type": "option",
         "required": false
@@ -777,6 +795,15 @@
         "required": true
       },
       {
+        "default": "exact",
+        "name": "index_mode",
+        "opts": [
+          "--index-mode"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": null,
         "name": "vector_store",
         "opts": [
@@ -803,6 +830,69 @@
   {
     "command": "replay",
     "params": [
+      {
+        "default": null,
+        "name": "max_error",
+        "opts": [
+          "--max-error"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "max_latency_ms",
+        "opts": [
+          "--max-latency-ms"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "max_memory_mb",
+        "opts": [
+          "--max-memory-mb"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "randomness_bounded",
+        "opts": [
+          "--randomness-bounded"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "randomness_non_replayable",
+        "opts": [
+          "--randomness-non-replayable"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "randomness_seed",
+        "opts": [
+          "--randomness-seed"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "randomness_sources",
+        "opts": [
+          "--randomness-sources"
+        ],
+        "param_type": "option",
+        "required": false
+      },
       {
         "default": null,
         "name": "request_text",
