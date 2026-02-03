@@ -30,9 +30,11 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
 
     nondeterministic_sources: tuple[str, ...] = ()
     lossy_dimensions: tuple[str, ...] = ()
+    execution_contract_status = "stable"
     if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC:
         nondeterministic_sources = ("approximate_execution",)
         lossy_dimensions = ("ranking",)
+        execution_contract_status = "experimental"
 
     return {
         "document": document,
@@ -42,8 +44,13 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         "metric": artifact.metric,
         "score": result.score,
         "execution_contract": artifact.execution_contract,
+        "execution_contract_status": execution_contract_status,
         "replayable": artifact.replayable,
         "execution_id": artifact.execution_id,
         "nondeterministic_sources": nondeterministic_sources,
         "lossy_dimensions": lossy_dimensions,
+        "embedding_source": vector.model,
+        "embedding_determinism": None,
+        "embedding_seed": None,
+        "embedding_model_version": None,
     }

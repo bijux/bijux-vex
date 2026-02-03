@@ -57,11 +57,21 @@ def test_provenance_contains_only_expected_fields():
         "metric",
         "score",
         "execution_contract",
+        "execution_contract_status",
         "replayable",
         "execution_id",
         "nondeterministic_sources",
         "lossy_dimensions",
+        "embedding_source",
+        "embedding_determinism",
+        "embedding_seed",
+        "embedding_model_version",
     }
     assert provenance["metric"] == "l2"
     assert provenance["execution_contract"] == ExecutionContract.DETERMINISTIC
+    assert provenance["execution_contract_status"] == "stable"
     assert provenance["replayable"] is True
+    assert provenance["embedding_source"] is None
+    assert provenance["embedding_determinism"] is None
+    assert provenance["embedding_seed"] is None
+    assert provenance["embedding_model_version"] is None

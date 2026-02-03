@@ -58,7 +58,12 @@ def test_explain_reconstructs_full_chain():
     assert explanation["metric"] == artifact.metric
     assert explanation["score"] == result.score
     assert explanation["execution_contract"] == artifact.execution_contract
+    assert explanation["execution_contract_status"] == "stable"
     assert explanation["replayable"] is artifact.replayable
     assert explanation["execution_id"] == artifact.execution_id
     assert explanation["nondeterministic_sources"] == ()
     assert explanation["lossy_dimensions"] == ()
+    assert explanation["embedding_source"] is None
+    assert explanation["embedding_determinism"] is None
+    assert explanation["embedding_seed"] is None
+    assert explanation["embedding_model_version"] is None
