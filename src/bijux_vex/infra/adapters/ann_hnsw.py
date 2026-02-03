@@ -127,7 +127,8 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
         build_started = time.time()
         index = hnswlib.Index(space=space, dim=dim)
         seed = self._active_seed if self._active_seed is not None else 0
-        index.set_seed(int(seed))
+        if hasattr(index, "set_seed"):
+            index.set_seed(int(seed))
         index.init_index(
             max_elements=len(vectors_list),
             ef_construction=int(ef_construction),
@@ -157,6 +158,7 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
         info: dict[str, object] = {
             "index_version": self.INDEX_VERSION,
             "index_kind": "hnswlib",
+            "backend": "hnswlib",
             "index_params": {
                 "M": int(m_val),
                 "ef_construction": int(ef_construction),
@@ -170,7 +172,6 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
             "index_hash": index_hash,
             "backend_version": getattr(hnswlib, "__version__", "unknown"),
             "seed": int(seed),
-            "ids": ids,
         }
         self._index_info[artifact_id] = info
         self._persist_index(artifact_id, info)
@@ -265,6 +266,18 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
                     )
                 else:
                     raise
+        if (
+            self._index is None
+            and request.nd_settings
+            and request.nd_settings.build_on_demand
+        ):
+            vectors = list(self.vectors.list_vectors())
+            self.build_index(
+                artifact.artifact_id,
+                vectors,
+                artifact.metric,
+                request.nd_settings,
+            )
         if self._index is None:
             raise AnnIndexBuildError(message="HNSW index missing; build required")
         index_info = _as_dict(self._index_info.get(artifact.artifact_id))
@@ -309,7 +322,7 @@ class HnswAnnRunner(AnnExecutionRequestRunner):
             adaptive = self._adaptive_ef_search.get(artifact.artifact_id)
             if adaptive:
                 ef_search = min(ef_search, int(adaptive))
-        if self._active_seed is not None:
+        if self._active_seed is not None and hasattr(self._index, "set_seed"):
             self._index.set_seed(int(self._active_seed))
         self._index.set_ef(int(ef_search))
         self._last_query_metadata = {

@@ -39,6 +39,7 @@ def test_api_nd_execution_path(tmp_path: Path, monkeypatch) -> None:
             "max_error": 0.2,
         },
         "randomness_profile": {"seed": 7, "sources": ["ann"], "bounded": True},
+        "nd_build_on_demand": True,
     }
     exec_resp = client.post("/execute", json=payload)
     assert exec_resp.status_code == 200

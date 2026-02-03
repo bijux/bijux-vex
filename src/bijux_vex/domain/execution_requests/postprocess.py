@@ -135,7 +135,7 @@ def build_execution_result(
                     nd_settings.target_recall
                 )
             notes = []
-            if failure_reason == "nd_no_confident_neighbors":
+            if failure_reason in {"nd_no_confident_neighbors", "nd_low_signal_margin"}:
                 notes.append("low_signal")
             if failure_reason == "nd_low_signal_refused":
                 notes.append("low_signal_refused")
@@ -177,7 +177,11 @@ def build_execution_result(
                 slo_met_latency=slo_met_latency,
                 slo_met_recall=slo_met_recall,
                 degraded=failure_reason
-                in {"nd_adaptive_k", "nd_no_confident_neighbors"},
+                in {
+                    "nd_adaptive_k",
+                    "nd_no_confident_neighbors",
+                    "nd_low_signal_margin",
+                },
                 degradation_reason=failure_reason,
                 notes=tuple(notes),
             )

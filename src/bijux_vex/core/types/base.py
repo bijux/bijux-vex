@@ -92,6 +92,7 @@ class NDSettings:
     normalize_vectors: bool = False
     normalize_query: bool = False
     outlier_threshold: float | None = None
+    low_signal_margin: float | None = None
     adaptive_k: bool = False
     low_signal_refuse: bool = False
     replay_strict: bool = False
@@ -99,6 +100,7 @@ class NDSettings:
     incremental_index: bool | None = None
     max_candidates: int | None = None
     max_index_memory_mb: int | None = None
+    two_stage: bool = True
     m: int | None = None
     ef_construction: int | None = None
     ef_search: int | None = None
@@ -166,6 +168,13 @@ class ExecutionRequest:
                 ):
                     raise InvariantError(
                         message="nd_settings.target_recall must be within (0,1]"
+                    )
+                if (
+                    self.nd_settings.low_signal_margin is not None
+                    and self.nd_settings.low_signal_margin <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.low_signal_margin must be positive"
                     )
                 if (
                     self.nd_settings.diversity_lambda is not None

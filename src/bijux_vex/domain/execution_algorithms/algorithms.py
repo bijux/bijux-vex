@@ -149,6 +149,13 @@ class ApproximateAnnAlgorithm(VectorExecutionAlgorithm):
         if not candidates:
             return ()
         need_rescore = True
+        if nd_settings and nd_settings.two_stage is False:
+            if candidate_k == execution.request.top_k:
+                need_rescore = False
+            if nd_settings.normalize_vectors or nd_settings.normalize_query:
+                need_rescore = True
+            if nd_settings.diversity_lambda is not None:
+                need_rescore = True
         if not need_rescore:
             candidates.sort(key=scoring.tie_break_key)
             limited = candidates[: execution.request.top_k]

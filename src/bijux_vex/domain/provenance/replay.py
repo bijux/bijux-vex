@@ -114,6 +114,16 @@ def replay(
                     raise ReplayNotSupportedError(
                         message="Non-deterministic replay refused: ANN backend version mismatch"
                     )
+                stored_backend_name = stored.approximation.backend
+                current_backend_name = current_info.get("backend")
+                if (
+                    stored_backend_name
+                    and current_backend_name
+                    and stored_backend_name != current_backend_name
+                ):
+                    raise ReplayNotSupportedError(
+                        message="Non-deterministic replay refused: ANN backend mismatch"
+                    )
                 stored_params = dict(stored.approximation.index_parameters)
                 current_params = current_info.get("index_params", {})
                 if stored_params and current_params and stored_params != current_params:

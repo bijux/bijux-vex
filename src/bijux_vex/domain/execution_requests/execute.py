@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import BijuxError
-from bijux_vex.core.execution_result import ExecutionResult
+from bijux_vex.core.execution_result import ExecutionResult, WitnessReport
 from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
 from bijux_vex.domain.execution_requests.budget import (
@@ -100,6 +100,11 @@ def execute_request(
                 witness_report = build_witness_report(
                     results_buffer, witness_results, sample_k
                 )
+        if witness_report is None:
+            note = "witness_off" if mode == "off" else "witness_not_measured"
+            witness_report = WitnessReport(
+                sample_k=0, overlap_ratio=0.0, rank_instability=0.0, note=note
+            )
 
     execution_result = build_execution_result(
         session=session,
