@@ -5,6 +5,7 @@ from __future__ import annotations
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
+from bijux_vex.domain.nd.randomness import validate_randomness_payload
 
 
 def validate_execution_request_payload(payload: object) -> None:
@@ -14,8 +15,8 @@ def validate_execution_request_payload(payload: object) -> None:
     randomness_profile = getattr(payload, "randomness_profile", None)
     execution_budget = getattr(payload, "execution_budget", None)
 
-    if contract is ExecutionContract.NON_DETERMINISTIC and randomness_profile is None:
-        raise ValueError("randomness_profile required for non_deterministic execution")
+    if contract is ExecutionContract.NON_DETERMINISTIC:
+        validate_randomness_payload(payload)
     if contract is ExecutionContract.NON_DETERMINISTIC and execution_budget is None:
         raise ValueError("execution_budget required for non_deterministic execution")
     if not isinstance(execution_intent, ExecutionIntent):
@@ -104,10 +105,5 @@ def validate_execution_request_payload(payload: object) -> None:
     nd_space = getattr(payload, "nd_space", None)
     if nd_space not in {None, "l2", "cosine", "ip"}:
         raise ValueError("nd_space must be l2|cosine|ip")
-    if randomness_profile and getattr(randomness_profile, "seed", None) is None:
-        sources = tuple(getattr(randomness_profile, "sources", None) or ())
-        non_replayable = getattr(randomness_profile, "non_replayable", False)
-        if not sources or not non_replayable:
-            raise ValueError(
-                "randomness_profile requires seed or non_replayable with explicit sources"
-            )
+    if randomness_profile:
+        validate_randomness_payload(payload)
