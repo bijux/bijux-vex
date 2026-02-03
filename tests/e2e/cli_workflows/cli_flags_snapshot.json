@@ -103,6 +103,15 @@
         "required": false
       },
       {
+        "default": 0.05,
+        "name": "overlap_regress_threshold",
+        "opts": [
+          "--overlap-regress-threshold"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": 256,
         "name": "query_count",
         "opts": [
@@ -550,6 +559,15 @@
         "required": false
       },
       {
+        "default": null,
+        "name": "nd_low_signal_margin",
+        "opts": [
+          "--nd-low-signal-margin"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": false,
         "name": "nd_low_signal_refuse",
         "opts": [
@@ -653,6 +671,16 @@
         "name": "nd_target_recall",
         "opts": [
           "--nd-target-recall"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": true,
+        "name": "nd_two_stage",
+        "opts": [
+          "--nd-two-stage",
+          "--no-nd-two-stage"
         ],
         "param_type": "option",
         "required": false
@@ -1007,10 +1035,55 @@
         "required": false
       },
       {
+        "default": null,
+        "name": "dataset_dir",
+        "opts": [
+          "--dataset-dir"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 32,
+        "name": "dimension",
+        "opts": [
+          "--dimension"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 256,
+        "name": "query_count",
+        "opts": [
+          "--query-count"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
         "default": 10,
         "name": "samples",
         "opts": [
           "--samples"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 1337,
+        "name": "seed",
+        "opts": [
+          "--seed"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 1000,
+        "name": "size",
+        "opts": [
+          "--size"
         ],
         "param_type": "option",
         "required": false
@@ -1029,6 +1102,15 @@
         "name": "uri",
         "opts": [
           "--uri"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "use_existing",
+        "opts": [
+          "--use-existing"
         ],
         "param_type": "option",
         "required": false

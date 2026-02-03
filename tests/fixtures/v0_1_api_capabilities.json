@@ -2,7 +2,8 @@
   "ann_status": "experimental",
   "backend": "sqlite",
   "contracts": [
-    "deterministic"
+    "deterministic",
+    "non_deterministic"
   ],
   "deterministic_query": true,
   "execution_modes": [
@@ -22,7 +23,7 @@
         "group": "bijux_vex.embeddings",
         "name": "bijux-vex",
         "status": "failed",
-        "version": "0.1.1.dev29",
+        "version": "0.1.1.dev62+dirty",
         "warning": "partially initialized module 'bijux_vex.plugins.example' has no attribute 'register_embedding' (most likely due to a circular import)"
       }
     ],
@@ -36,7 +37,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev29"
+        "version": "0.1.1.dev62+dirty"
       }
     ],
     "vectorstores": [
@@ -55,7 +56,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev29"
+        "version": "0.1.1.dev62+dirty"
       }
     ]
   },
