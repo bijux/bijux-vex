@@ -21,12 +21,22 @@ class CreateRequest(StrictModel):
 
 class IngestRequest(StrictModel):
     documents: list[str]
-    vectors: list[list[float]]
+    vectors: list[list[float]] | None = None
+    embed_provider: str | None = None
+    embed_model: str | None = None
+    cache_embeddings: str | None = None
+    vector_store: str | None = None
+    vector_store_uri: str | None = None
+    vector_store_options: dict[str, str] | None = None
 
     @model_validator(mode="after")  # type: ignore[untyped-decorator]
     def ensure_lengths(self) -> Self:
-        if len(self.documents) != len(self.vectors):
-            raise ValueError("documents and vectors length mismatch")
+        if self.vectors:
+            if len(self.documents) != len(self.vectors):
+                raise ValueError("documents and vectors length mismatch")
+        else:
+            if not self.embed_model:
+                raise ValueError("embed_model required when vectors are omitted")
         return self
 
 
@@ -52,6 +62,9 @@ class ExecutionRequestPayload(StrictModel):
     execution_mode: ExecutionMode = ExecutionMode.STRICT
     execution_budget: ExecutionBudgetPayload | None = None
     randomness_profile: RandomnessProfilePayload | None = None
+    vector_store: str | None = None
+    vector_store_uri: str | None = None
+    vector_store_options: dict[str, str] | None = None
 
     @model_validator(mode="after")  # type: ignore[untyped-decorator]
     def ensure_one_of_request_or_vector(self) -> Self:
@@ -92,6 +105,9 @@ class ExecutionRequestPayload(StrictModel):
 
 class ExecutionArtifactRequest(StrictModel):
     execution_contract: ExecutionContract
+    vector_store: str | None = None
+    vector_store_uri: str | None = None
+    vector_store_options: dict[str, str] | None = None
 
 
 class ExplainRequest(StrictModel):
@@ -103,6 +119,17 @@ class StorageBackendDescriptor(StrictModel):
     name: str
     status: str
     persistence: str | None = None
+    notes: str | None = None
+
+
+class VectorStoreDescriptor(StrictModel):
+    name: str
+    available: bool
+    supports_exact: bool
+    supports_ann: bool
+    deterministic_exact: bool
+    experimental: bool
+    version: str | None = None
     notes: str | None = None
 
 
@@ -118,3 +145,4 @@ class BackendCapabilitiesReport(StrictModel):
     execution_modes: list[str]
     ann_status: str
     storage_backends: list[StorageBackendDescriptor]
+    vector_stores: list[VectorStoreDescriptor]

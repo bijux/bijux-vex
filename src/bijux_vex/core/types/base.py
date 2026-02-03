@@ -42,11 +42,18 @@ class Vector:
     values: tuple[float, ...]
     dimension: int
     model: str | None = None
+    metadata: tuple[tuple[str, str], ...] | dict[str, str] | None = None
 
     def __post_init__(self) -> None:
         if self.dimension <= 0:
             raise InvariantError(message="vector dimension must be positive")
         object.__setattr__(self, "values", tuple(self.values))
+        if self.metadata is not None:
+            if isinstance(self.metadata, dict):
+                metadata = tuple((str(k), str(v)) for k, v in self.metadata.items())
+            else:
+                metadata = tuple((str(k), str(v)) for k, v in self.metadata)
+            object.__setattr__(self, "metadata", metadata)
         if len(self.values) != self.dimension:
             raise InvariantError(
                 message="vector values length must match declared dimension"

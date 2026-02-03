@@ -16,6 +16,7 @@ from bijux_vex.boundaries.pydantic_edges.models import (
 )
 from bijux_vex.contracts.authz import AllowAllAuthz, Authz, DenyAllAuthz
 from bijux_vex.contracts.tx import Tx
+from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
     AuthzDeniedError,
@@ -48,6 +49,15 @@ from bijux_vex.domain.execution_requests.execute import (
 from bijux_vex.domain.provenance.lineage import explain_result
 from bijux_vex.domain.provenance.replay import replay
 from bijux_vex.infra.adapters.sqlite.backend import sqlite_backend
+from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
+from bijux_vex.infra.adapters.vectorstore_source import VectorStoreVectorSource
+from bijux_vex.infra.embeddings.cache import (
+    build_cache,
+    cache_key,
+    embedding_config_hash,
+    metadata_as_dict,
+)
+from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
 from bijux_vex.services.policies.id_policy import (
     ContentAddressedIdPolicy,
     IdGenerationStrategy,
@@ -62,7 +72,9 @@ class Orchestrator:
         backend: Any | None = None,
         authz: Authz | None = None,
         state_path: str | Path | None = None,
+        config: ExecutionConfig | None = None,
     ) -> None:
+        self.config = config or ExecutionConfig()
         if backend is not None:
             self.backend = backend
         else:
@@ -81,6 +93,22 @@ class Orchestrator:
                 self.backend = hnsw_backend(db_path=str(chosen_path))
             else:
                 self.backend = sqlite_backend(str(chosen_path))
+        self.vector_store_enabled = self.config.vector_store is not None
+        vector_store_cfg = self.config.vector_store or VectorStoreConfig(
+            backend="memory"
+        )
+        self.vector_store_resolution = VECTOR_STORES.resolve(
+            vector_store_cfg.backend or "memory",
+            uri=vector_store_cfg.uri,
+            options=vector_store_cfg.options,
+        )
+        self.stores = self.backend.stores
+        if self.vector_store_enabled:
+            self.stores = self.backend.stores._replace(
+                vectors=VectorStoreVectorSource(
+                    self.backend.stores.vectors, self.vector_store_resolution
+                )
+            )
         if authz is not None:
             self.authz = authz
         else:
@@ -105,17 +133,42 @@ class Orchestrator:
             )
 
     def _require_artifact(self, artifact_id: str) -> ExecutionArtifact:
-        artifact = self.backend.stores.ledger.get_artifact(artifact_id)
+        artifact = self.stores.ledger.get_artifact(artifact_id)
         if artifact is None:
             raise NotFoundError(message=f"Execution artifact {artifact_id} not found")
         return cast(ExecutionArtifact, artifact)
 
+    def _artifact_build_params(self) -> tuple[tuple[str, str], ...]:
+        if not self.vector_store_enabled:
+            return ()
+        metadata = getattr(self.stores.vectors, "vector_store_metadata", None)
+        if not isinstance(metadata, dict):
+            return ()
+        params: list[tuple[str, str]] = []
+        backend = metadata.get("backend")
+        if backend:
+            params.append(("vector_store.backend", str(backend)))
+        uri = metadata.get("uri_redacted")
+        if uri:
+            params.append(("vector_store.uri_redacted", str(uri)))
+        index_params = metadata.get("index_params")
+        if index_params:
+            params.append(("vector_store.index_params", str(index_params)))
+        return tuple(params)
+
+    @staticmethod
+    def _metadata_tuple(
+        meta: dict[str, str | None],
+    ) -> tuple[tuple[str, str], ...] | None:
+        items = tuple((k, v) for k, v in meta.items() if v is not None)
+        return items or None
+
     def list_artifacts(self) -> dict[str, Any]:
-        artifacts = tuple(self.backend.stores.ledger.list_artifacts())
+        artifacts = tuple(self.stores.ledger.list_artifacts())
         return {"artifacts": [a.artifact_id for a in artifacts]}
 
     def capabilities(self) -> dict[str, Any]:
-        caps = getattr(self.backend.stores, "capabilities", None)
+        caps = getattr(self.stores, "capabilities", None)
         supports_ann = False
         if caps is not None:
             supports_ann = bool(
@@ -146,6 +199,19 @@ class Orchestrator:
                 "notes": "excluded from v1 freeze",
             },
         ]
+        vector_stores = [
+            {
+                "name": desc.name,
+                "available": desc.available,
+                "supports_exact": desc.supports_exact,
+                "supports_ann": desc.supports_ann,
+                "deterministic_exact": desc.deterministic_exact,
+                "experimental": desc.experimental,
+                "version": desc.version,
+                "notes": desc.notes,
+            }
+            for desc in VECTOR_STORES.descriptors()
+        ]
         if caps is None:
             return {
                 "backend": getattr(self.backend, "name", "unknown"),
@@ -159,6 +225,7 @@ class Orchestrator:
                 "execution_modes": execution_modes,
                 "ann_status": ann_status,
                 "storage_backends": storage_backends,
+                "vector_stores": vector_stores,
             }
         return {
             "backend": getattr(self.backend, "name", "unknown"),
@@ -175,6 +242,7 @@ class Orchestrator:
             "execution_modes": execution_modes,
             "ann_status": ann_status,
             "storage_backends": storage_backends,
+            "vector_stores": vector_stores,
         }
 
     def create(self, req: CreateRequest) -> dict[str, Any]:
@@ -183,12 +251,98 @@ class Orchestrator:
 
     def ingest(self, req: IngestRequest) -> dict[str, Any]:
         self._guard_mutation("ingest")
+        vectors_input = list(req.vectors or [])
+        vectors: list[list[float]] = []
+        embedding_meta_by_index: dict[int, dict[str, str | None]] = {}
+        embedding_model: str | None = None
+        if vectors_input:
+            vectors = vectors_input
+        else:
+            embed_provider = None
+            embed_model = None
+            cache_spec = None
+            if self.config.embeddings is not None:
+                embed_provider = self.config.embeddings.provider
+                embed_model = self.config.embeddings.model
+                if self.config.embeddings.cache is not None:
+                    cache_spec = (
+                        self.config.embeddings.cache.uri
+                        or self.config.embeddings.cache.backend
+                    )
+            embed_provider = embed_provider or req.embed_provider
+            embed_model = embed_model or req.embed_model
+            cache_spec = cache_spec or req.cache_embeddings
+            if not embed_model:
+                raise ValidationError(
+                    message="embed_model required when vectors are omitted"
+                )
+            embedding_model = embed_model
+            try:
+                provider = EMBEDDING_PROVIDERS.resolve(embed_provider)
+            except ValueError as exc:
+                raise ValidationError(message=str(exc)) from exc
+            options: dict[str, str] = {}
+            config_hash = embedding_config_hash(provider.name, embed_model, options)
+            try:
+                cache = build_cache(cache_spec)
+            except ValueError as exc:
+                raise ValidationError(message=str(exc)) from exc
+            pending_texts: list[str] = []
+            pending_idx: list[int] = []
+            vectors = [[0.0] for _ in req.documents]
+            if cache is not None:
+                for idx, doc_text in enumerate(req.documents):
+                    key = cache_key(embed_model, doc_text, config_hash)
+                    entry = cache.get(key)
+                    if entry:
+                        vectors[idx] = list(entry.vector)
+                        embedding_meta_by_index[idx] = entry.metadata
+                    else:
+                        pending_texts.append(doc_text)
+                        pending_idx.append(idx)
+            else:
+                pending_texts = list(req.documents)
+                pending_idx = list(range(len(req.documents)))
+            if pending_texts:
+                batch = provider.embed(pending_texts, embed_model, options=options)
+                if len(batch.vectors) != len(pending_idx):
+                    raise ValidationError(
+                        message="embedding provider returned mismatched vector count"
+                    )
+                for idx, embed_vec in zip(pending_idx, batch.vectors, strict=False):
+                    vectors[idx] = list(embed_vec)
+                    meta_dict = metadata_as_dict(
+                        {
+                            "embedding_provider": batch.metadata.provider,
+                            "embedding_model_version": batch.metadata.model_version,
+                            "embedding_determinism": batch.metadata.embedding_determinism,
+                            "embedding_seed": batch.metadata.embedding_seed,
+                            "embedding_device": batch.metadata.embedding_device,
+                            "embedding_dtype": batch.metadata.embedding_dtype,
+                        }
+                    )
+                    embedding_meta_by_index[idx] = meta_dict
+                    if cache is not None:
+                        key = cache_key(
+                            batch.metadata.model,
+                            req.documents[idx],
+                            batch.metadata.config_hash,
+                        )
+                        from bijux_vex.infra.embeddings.cache import EmbeddingCacheEntry
+
+                        cache.set(
+                            key,
+                            entry=EmbeddingCacheEntry(
+                                vector=tuple(embed_vec),
+                                metadata=meta_dict,
+                            ),
+                        )
         with self._tx() as tx:
             for idx, doc_text in enumerate(req.documents):
                 doc_id = self.id_policy.document_id(doc_text)
                 doc = Document(document_id=doc_id, text=doc_text)
                 self.authz.check(tx, action="put_document", resource="document")
-                self.backend.stores.vectors.put_document(tx, doc)
+                self.stores.vectors.put_document(tx, doc)
                 chunk = Chunk(
                     chunk_id=self.id_policy.chunk_id(doc.document_id, 0),
                     document_id=doc.document_id,
@@ -196,24 +350,28 @@ class Orchestrator:
                     ordinal=0,
                 )
                 self.authz.check(tx, action="put_chunk", resource="chunk")
-                self.backend.stores.vectors.put_chunk(tx, chunk)
+                self.stores.vectors.put_chunk(tx, chunk)
                 vec = Vector(
                     vector_id=self.id_policy.vector_id(
-                        chunk.chunk_id, tuple(req.vectors[idx])
+                        chunk.chunk_id, tuple(vectors[idx])
                     ),
                     chunk_id=chunk.chunk_id,
-                    values=tuple(req.vectors[idx]),
-                    dimension=len(req.vectors[idx]),
+                    values=tuple(vectors[idx]),
+                    dimension=len(vectors[idx]),
+                    model=embedding_model,
+                    metadata=self._metadata_tuple(embedding_meta_by_index.get(idx, {}))
+                    if embedding_meta_by_index
+                    else None,
                 )
                 self.authz.check(tx, action="put_vector", resource="vector")
-                self.backend.stores.vectors.put_vector(tx, vec)
+                self.stores.vectors.put_vector(tx, vec)
         self._latest_corpus_fingerprint = corpus_fingerprint(req.documents)
-        self._latest_vector_fingerprint = vectors_fingerprint(req.vectors)
+        self._latest_vector_fingerprint = vectors_fingerprint(vectors)
         return {"ingested": len(req.documents)}
 
     def materialize(self, req: ExecutionArtifactRequest) -> dict[str, Any]:
         self._guard_mutation("materialize")
-        existing = self.backend.stores.ledger.get_artifact(self.default_artifact_id)
+        existing = self.stores.ledger.get_artifact(self.default_artifact_id)
         if existing and existing.execution_contract is not req.execution_contract:
             raise InvariantError(
                 message="Cannot rebuild artifact with different execution contract"
@@ -228,7 +386,7 @@ class Orchestrator:
             scoring_version="v1",
             schema_version="v1",
             execution_contract=req.execution_contract,
-            build_params=(),
+            build_params=self._artifact_build_params(),
         )
         plan = ExecutionPlan(
             algorithm="exact_vector_execution",
@@ -271,7 +429,7 @@ class Orchestrator:
         )
         with self._tx() as tx:
             self.authz.check(tx, action="put_artifact", resource="artifact")
-            self.backend.stores.ledger.put_artifact(tx, artifact)
+            self.stores.ledger.put_artifact(tx, artifact)
         return {
             "artifact_id": artifact.artifact_id,
             "execution_contract": artifact.execution_contract.value,
@@ -288,7 +446,7 @@ class Orchestrator:
             raise ValidationError(message="execution vector required")
         artifact_id = req.artifact_id
         if artifact_id is None:
-            available = tuple(self.backend.stores.ledger.list_artifacts())
+            available = tuple(self.stores.ledger.list_artifacts())
             if len(available) == 1:
                 artifact_id = available[0].artifact_id
             else:
@@ -354,24 +512,24 @@ class Orchestrator:
         session = start_execution_session(
             artifact,
             request,
-            self.backend.stores,
+            self.stores,
             randomness=randomness_profile,
             ann_runner=getattr(self.backend, "ann", None),
         )
         execution_result, results = execute_request(
             session,
-            self.backend.stores,
+            self.stores,
             ann_runner=getattr(self.backend, "ann", None),
         )
         with self._tx() as tx:
-            self.backend.stores.ledger.put_execution_result(tx, execution_result)
+            self.stores.ledger.put_execution_result(tx, execution_result)
             updated_artifact = replace(
                 artifact,
                 execution_plan=execution_result.plan,
                 execution_signature=execution_result.signature,
                 execution_id=execution_result.execution_id,
             )
-            self.backend.stores.ledger.put_artifact(tx, updated_artifact)
+            self.stores.ledger.put_artifact(tx, updated_artifact)
             artifact = updated_artifact
         return {
             "results": [r.vector_id for r in results],
@@ -388,7 +546,7 @@ class Orchestrator:
     def explain(self, req: ExplainRequest) -> dict[str, Any]:
         art_id = req.artifact_id
         if art_id is None:
-            artifacts = tuple(self.backend.stores.ledger.list_artifacts())
+            artifacts = tuple(self.stores.ledger.list_artifacts())
             if len(artifacts) == 1:
                 art_id = artifacts[0].artifact_id
             else:
@@ -407,19 +565,19 @@ class Orchestrator:
             session = start_execution_session(
                 artifact,
                 request,
-                self.backend.stores,
+                self.stores,
                 ann_runner=getattr(self.backend, "ann", None),
             )
             exec_result, results_iter = execute_request(
                 session,
-                self.backend.stores,
+                self.stores,
                 ann_runner=getattr(self.backend, "ann", None),
             )
             results = list(results_iter)
         target = next((r for r in results if r.vector_id == req.result_id), None)
         if target is None:
             raise InvariantError(message="result not found")
-        data = explain_result(target, self.backend.stores)
+        data = explain_result(target, self.stores)
         document = cast(Document, data["document"])
         chunk = cast(Chunk, data["chunk"])
         vector = cast(Vector, data["vector"])
@@ -449,7 +607,7 @@ class Orchestrator:
     ) -> dict[str, Any]:
         chosen_artifact_id = artifact_id
         if chosen_artifact_id is None:
-            artifacts = tuple(self.backend.stores.ledger.list_artifacts())
+            artifacts = tuple(self.stores.ledger.list_artifacts())
             if len(artifacts) == 1:
                 chosen_artifact_id = artifacts[0].artifact_id
             else:
@@ -478,7 +636,7 @@ class Orchestrator:
         outcome = replay(
             request,
             artifact,
-            self.backend.stores,
+            self.stores,
             ann_runner=getattr(self.backend, "ann", None),
         )
         return {
@@ -542,17 +700,13 @@ class Orchestrator:
         req_b = _as_request(art_b)
         ann_runner = getattr(self.backend, "ann", None)
         session_a = start_execution_session(
-            art_a, req_a, self.backend.stores, ann_runner=ann_runner
+            art_a, req_a, self.stores, ann_runner=ann_runner
         )
         session_b = start_execution_session(
-            art_b, req_b, self.backend.stores, ann_runner=ann_runner
+            art_b, req_b, self.stores, ann_runner=ann_runner
         )
-        exec_a, res_a = execute_request(
-            session_a, self.backend.stores, ann_runner=ann_runner
-        )
-        exec_b, res_b = execute_request(
-            session_b, self.backend.stores, ann_runner=ann_runner
-        )
+        exec_a, res_a = execute_request(session_a, self.stores, ann_runner=ann_runner)
+        exec_b, res_b = execute_request(session_b, self.stores, ann_runner=ann_runner)
         diff = compare_executions(exec_a, res_a, exec_b, res_b)
         return {
             "execution_a": diff.execution_a.execution_id,

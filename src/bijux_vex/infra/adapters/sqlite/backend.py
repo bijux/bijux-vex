@@ -51,7 +51,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS chunks(id TEXT PRIMARY KEY, document_id TEXT, text TEXT, ordinal INTEGER)"
     )
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS vectors(id TEXT PRIMARY KEY, chunk_id TEXT, dim INTEGER, vec_values TEXT)"
+        "CREATE TABLE IF NOT EXISTS vectors(id TEXT PRIMARY KEY, chunk_id TEXT, dim INTEGER, vec_values TEXT, model TEXT, metadata TEXT)"
     )
     conn.execute(
         """
@@ -78,7 +78,16 @@ def _init_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    _ensure_vector_columns(conn)
     conn.commit()
+
+
+def _ensure_vector_columns(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(vectors)").fetchall()}
+    if "model" not in existing:
+        conn.execute("ALTER TABLE vectors ADD COLUMN model TEXT")
+    if "metadata" not in existing:
+        conn.execute("ALTER TABLE vectors ADD COLUMN metadata TEXT")
 
 
 class SQLiteTx(Tx):
@@ -214,36 +223,43 @@ class SQLiteVectorSource(VectorSource):
 
     def put_vector(self, tx: Tx, vector: Vector) -> None:
         self._conn.execute(
-            "REPLACE INTO vectors(id, chunk_id, dim, vec_values) VALUES(?,?,?,?)",
+            "REPLACE INTO vectors(id, chunk_id, dim, vec_values, model, metadata) VALUES(?,?,?,?,?,?)",
             (
                 vector.vector_id,
                 vector.chunk_id,
                 vector.dimension,
                 json_dumps(vector.values),
+                vector.model,
+                json_dumps_meta(vector.metadata),
             ),
         )
 
     def get_vector(self, vector_id: str) -> Vector | None:
         row = self._conn.execute(
-            "SELECT id, chunk_id, dim, vec_values FROM vectors WHERE id=?",
+            "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE id=?",
             (vector_id,),
         ).fetchone()
         if not row:
             return None
         values = tuple(json_loads(row[3]))
         return Vector(
-            vector_id=row[0], chunk_id=row[1], dimension=row[2], values=values
+            vector_id=row[0],
+            chunk_id=row[1],
+            dimension=row[2],
+            values=values,
+            model=row[4],
+            metadata=json_loads_meta(row[5]),
         )
 
     def list_vectors(self, chunk_id: str | None = None) -> Iterable[Vector]:
         if chunk_id:
             rows = self._conn.execute(
-                "SELECT id, chunk_id, dim, vec_values FROM vectors WHERE chunk_id=? ORDER BY id",
+                "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE chunk_id=? ORDER BY id",
                 (chunk_id,),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT id, chunk_id, dim, vec_values FROM vectors ORDER BY id"
+                "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors ORDER BY id"
             ).fetchall()
         return [
             Vector(
@@ -251,6 +267,8 @@ class SQLiteVectorSource(VectorSource):
                 chunk_id=r[1],
                 dimension=r[2],
                 values=tuple(json_loads(r[3])),
+                model=r[4],
+                metadata=json_loads_meta(r[5]),
             )
             for r in rows
         ]
@@ -509,6 +527,22 @@ def json_dumps(vals: Iterable[float]) -> str:
 def json_loads(raw: str) -> list[float]:
     loaded = json.loads(raw)
     return [float(v) for v in loaded]
+
+
+def json_dumps_meta(
+    metadata: tuple[tuple[str, str], ...] | dict[str, str] | None,
+) -> str | None:
+    if not metadata:
+        return None
+    payload = list(metadata.items()) if isinstance(metadata, dict) else list(metadata)
+    return json.dumps(payload)
+
+
+def json_loads_meta(raw: str | None) -> tuple[tuple[str, str], ...] | None:
+    if not raw:
+        return None
+    loaded = json.loads(raw)
+    return tuple((str(k), str(v)) for k, v in loaded)
 
 
 class SQLiteFixture(NamedTuple):
