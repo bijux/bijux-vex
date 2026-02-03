@@ -5,6 +5,7 @@ from __future__ import annotations
 from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import NotFoundError
+from bijux_vex.core.identity.fingerprints import determinism_fingerprint
 from bijux_vex.core.types import Result
 
 
@@ -44,6 +45,12 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         vector_store_uri = vector_store_metadata.get("uri_redacted")
         vector_store_index_params = vector_store_metadata.get("index_params")
     embedding_metadata = dict(vector.metadata or ())
+    plan = artifact.execution_plan
+    determinism_hash = determinism_fingerprint(
+        artifact.vector_fingerprint,
+        artifact.index_config_fingerprint,
+        plan.algorithm if plan else None,
+    )
 
     return {
         "document": document,
@@ -63,9 +70,14 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         "embedding_seed": embedding_metadata.get("embedding_seed"),
         "embedding_model_version": embedding_metadata.get("embedding_model_version"),
         "embedding_provider": embedding_metadata.get("embedding_provider"),
+        "embedding_provider_version": embedding_metadata.get(
+            "embedding_provider_version"
+        ),
         "embedding_device": embedding_metadata.get("embedding_device"),
         "embedding_dtype": embedding_metadata.get("embedding_dtype"),
+        "embedding_normalization": embedding_metadata.get("embedding_normalization"),
         "vector_store_backend": vector_store_backend,
         "vector_store_uri_redacted": vector_store_uri,
         "vector_store_index_params": vector_store_index_params,
+        "determinism_fingerprint": determinism_hash,
     }

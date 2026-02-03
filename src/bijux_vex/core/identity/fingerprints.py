@@ -19,4 +19,19 @@ def vectors_fingerprint(vectors: Iterable[Iterable[float]]) -> str:
     return fingerprint(payload)
 
 
-__all__ = ["corpus_fingerprint", "vectors_fingerprint"]
+def determinism_fingerprint(
+    vector_fingerprint: str,
+    config_fingerprint: str | None,
+    algorithm: str | None,
+    extra: Iterable[tuple[str, str]] | None = None,
+) -> str:
+    payload = {
+        "vectors": vector_fingerprint,
+        "config": config_fingerprint,
+        "algorithm": algorithm,
+        "extra": tuple(extra or ()),
+    }
+    return fingerprint(payload)
+
+
+__all__ = ["corpus_fingerprint", "vectors_fingerprint", "determinism_fingerprint"]

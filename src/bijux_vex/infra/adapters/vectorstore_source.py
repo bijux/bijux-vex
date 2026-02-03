@@ -6,8 +6,8 @@ from collections.abc import Iterable
 from typing import Any
 
 from bijux_vex.contracts.resources import VectorSource
-from bijux_vex.core.contracts.execution_contract import ExecutionContract
-from bijux_vex.core.errors import BackendCapabilityError, ValidationError
+from bijux_vex.core.determinism import classify_execution
+from bijux_vex.core.errors import ValidationError
 from bijux_vex.core.types import Chunk, Document, ExecutionRequest, Result, Vector
 from bijux_vex.domain.execution_requests import scoring
 from bijux_vex.infra.adapters.vectorstore_registry import VectorStoreResolution
@@ -89,20 +89,13 @@ class VectorStoreVectorSource(VectorSource):
             raise ValidationError(message="execution vector required")
         if getattr(self._adapter, "is_noop", False):
             return self._base.query(artifact_id, request)
-        if (
-            request.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and not self._resolved.descriptor.supports_ann
-        ):
-            raise BackendCapabilityError(
-                message="Approximate execution requested but vector store does not support ANN"
-            )
-        if (
-            request.execution_contract is ExecutionContract.DETERMINISTIC
-            and not self._resolved.descriptor.deterministic_exact
-        ):
-            raise BackendCapabilityError(
-                message="Deterministic execution requires a deterministic vector store"
-            )
+        classify_execution(
+            contract=request.execution_contract,
+            randomness=None,
+            ann_runner=None,
+            vector_store=self._resolved.descriptor,
+            require_randomness=False,
+        )
         results: list[Result] = []
         for vector_id, score in self._adapter.query(
             list(request.vector), request.top_k, mode=request.execution_contract.value

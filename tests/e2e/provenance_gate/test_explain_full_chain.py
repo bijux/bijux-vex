@@ -68,8 +68,11 @@ def test_explain_reconstructs_full_chain():
     assert explanation["embedding_seed"] is None
     assert explanation["embedding_model_version"] is None
     assert explanation["embedding_provider"] is None
+    assert explanation["embedding_provider_version"] is None
     assert explanation["embedding_device"] is None
     assert explanation["embedding_dtype"] is None
+    assert explanation["embedding_normalization"] is None
     assert explanation["vector_store_backend"] is None
     assert explanation["vector_store_uri_redacted"] is None
     assert explanation["vector_store_index_params"] is None
+    assert "determinism_fingerprint" in explanation

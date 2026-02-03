@@ -63,11 +63,14 @@ def test_explain_provenance_key_order_is_stable() -> None:
         "embedding_seed",
         "embedding_model_version",
         "embedding_provider",
+        "embedding_provider_version",
         "embedding_device",
         "embedding_dtype",
+        "embedding_normalization",
         "vector_store_backend",
         "vector_store_uri_redacted",
         "vector_store_index_params",
+        "determinism_fingerprint",
     ]
     assert list(explain.keys()) == expected_order
     # Stable serialization across platforms.

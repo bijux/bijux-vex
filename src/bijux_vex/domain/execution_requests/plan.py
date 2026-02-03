@@ -6,6 +6,7 @@ from collections.abc import Iterable
 
 from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
+from bijux_vex.core.determinism import classify_execution
 from bijux_vex.core.errors import (
     BackendCapabilityError,
     InvariantError,
@@ -29,14 +30,12 @@ def build_execution_plan(
 ) -> tuple[ExecutionPlan, VectorExecution]:
     _validate_contract_alignment(artifact, request)
     _validate_capabilities(artifact, request, resources)
-    if (
-        request.execution_contract is ExecutionContract.NON_DETERMINISTIC
-        and randomness is None
-    ):
-        raise InvariantError(
-            message="RandomnessProfile required for non-deterministic execution",
-            invariant_id="INV-020",
-        )
+    classify_execution(
+        contract=request.execution_contract,
+        randomness=randomness,
+        ann_runner=ann_runner,
+        vector_store=None,
+    )
     plan, algo_name, randomness_profile = (
         _build_deterministic_plan(artifact, request)
         if request.execution_contract is ExecutionContract.DETERMINISTIC
