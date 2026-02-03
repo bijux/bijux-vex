@@ -1,18 +1,16 @@
 # ND Examples With Interpretation
 
-## Example: Good ND run
+## Example: Safe ND run
 
-- Metrics: low instability, strong distance margin, low entropy.
-- Confidence: high.
-- Action: safe for recommendations, still record provenance.
+- This run is safe because instability is low and margins are clear.
+- Confidence is high, and witness confirms overlap.
 
-## Example: Unstable ND run
+## Example: Risky ND run
 
-- Metrics: high instability, low margin.
-- Confidence: low.
-- Action: enable witness mode or switch to deterministic for verification.
+- This run is risky because instability is high and margins are thin.
+- Confidence is low; use witness or switch to deterministic.
 
 ## Example: Refusal
 
-- Reason: budget too tight for requested recall.
-- Action: increase latency budget or lower target recall.
+- This run refused because the budget was too tight for the requested recall.
+- Increase the budget or lower the recall target.
