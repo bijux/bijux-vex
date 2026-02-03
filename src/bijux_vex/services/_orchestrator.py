@@ -27,9 +27,15 @@ from bijux_vex.core.errors import (
     NotFoundError,
     ValidationError,
 )
+from bijux_vex.core.errors.refusal import is_refusal, refusal_payload
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
-from bijux_vex.core.identity.fingerprints import corpus_fingerprint, vectors_fingerprint
+from bijux_vex.core.identity.fingerprints import (
+    corpus_fingerprint,
+    determinism_fingerprint,
+    vectors_fingerprint,
+)
+from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.runtime.execution_plan import ExecutionPlan
 from bijux_vex.core.runtime.vector_execution import (
     RandomnessProfile,
@@ -70,6 +76,34 @@ from bijux_vex.services.policies.id_policy import (
     IdGenerationStrategy,
 )
 
+_BACKEND_POOL: dict[tuple[str, str], Any] = {}
+_BACKEND_LOCK = threading.Lock()
+
+
+def _resolve_backend(backend_env: str, chosen_path: Path) -> Any:
+    if backend_env == "memory":
+        from bijux_vex.infra.adapters.memory.backend import memory_backend
+
+        return memory_backend()
+    key = (backend_env or "", str(chosen_path))
+    with _BACKEND_LOCK:
+        cached = _BACKEND_POOL.get(key)
+        if cached is not None:
+            return cached
+        backend: Any
+        if backend_env == "hnsw":
+            from bijux_vex.infra.adapters.hnsw.backend import hnsw_backend
+
+            backend = hnsw_backend(db_path=str(chosen_path))
+        else:
+            backend = sqlite_backend(str(chosen_path))
+        _BACKEND_POOL[key] = backend
+        return backend
+
+
+def _resolve_correlation_id(raw: str | None) -> str:
+    return raw or "req-1"
+
 
 class Orchestrator:
     # This module is allowed to be “ugly but bounded”: wiring/glue only.
@@ -90,16 +124,7 @@ class Orchestrator:
                 state_path or os.getenv("BIJUX_VEX_STATE_PATH") or "session.sqlite"
             )
             chosen_path = Path(chosen_raw)
-            if backend_env == "memory":
-                from bijux_vex.infra.adapters.memory.backend import memory_backend
-
-                self.backend = memory_backend()
-            elif backend_env == "hnsw":
-                from bijux_vex.infra.adapters.hnsw.backend import hnsw_backend
-
-                self.backend = hnsw_backend(db_path=str(chosen_path))
-            else:
-                self.backend = sqlite_backend(str(chosen_path))
+            self.backend = _resolve_backend(backend_env, chosen_path)
         self.vector_store_enabled = self.config.vector_store is not None
         vector_store_cfg = self.config.vector_store or VectorStoreConfig(
             backend="memory"
@@ -288,13 +313,15 @@ class Orchestrator:
             and limits.max_vectors_per_ingest is not None
             and len(req.documents) > int(limits.max_vectors_per_ingest)
         ):
-            raise ValidationError(message="ingest exceeds max_vectors_per_ingest limit")
+            raise BudgetExceededError(
+                message="ingest exceeds max_vectors_per_ingest limit"
+            )
         if req.idempotency_key:
             with self._idempotency_lock:
                 cached = self._idempotency_cache.get(req.idempotency_key)
                 if cached is not None:
                     return dict(cached)
-        correlation_id = req.correlation_id or "req-1"
+        correlation_id = _resolve_correlation_id(req.correlation_id)
         log_event(
             "ingest_start", correlation_id=correlation_id, count=len(req.documents)
         )
@@ -438,7 +465,7 @@ class Orchestrator:
         log_event("ingest_end", correlation_id=correlation_id, elapsed_ms=elapsed())
         self._latest_corpus_fingerprint = corpus_fingerprint(req.documents)
         self._latest_vector_fingerprint = vectors_fingerprint(vectors)
-        result = {"ingested": len(req.documents)}
+        result = {"ingested": len(req.documents), "correlation_id": correlation_id}
         if req.idempotency_key:
             with self._idempotency_lock:
                 self._idempotency_cache[req.idempotency_key] = dict(result)
@@ -522,15 +549,17 @@ class Orchestrator:
             raise ValidationError(message="execution vector required")
         limits = self.config.resource_limits
         if limits and limits.max_k is not None and req.top_k > int(limits.max_k):
-            raise ValidationError(message="top_k exceeds max_k limit")
+            raise BudgetExceededError(message="top_k exceeds max_k limit")
         if (
             limits
             and limits.max_query_size is not None
             and req.request_text
             and len(req.request_text) > int(limits.max_query_size)
         ):
-            raise ValidationError(message="request_text exceeds max_query_size limit")
-        correlation_id = req.correlation_id or "req-1"
+            raise BudgetExceededError(
+                message="request_text exceeds max_query_size limit"
+            )
+        correlation_id = _resolve_correlation_id(req.correlation_id)
         run_id = f"{correlation_id}-{uuid.uuid4().hex}"
         artifact_id = req.artifact_id
         if artifact_id is None:
@@ -597,6 +626,28 @@ class Orchestrator:
             randomness=randomness_profile,
             ann_runner=getattr(self.backend, "ann", None),
         )
+        vector_store_meta = getattr(self.stores.vectors, "vector_store_metadata", None)
+        vector_store_index_params = None
+        vector_store_consistency = None
+        if isinstance(vector_store_meta, dict):
+            vector_store_index_params = vector_store_meta.get("index_params")
+            vector_store_consistency = vector_store_meta.get("consistency")
+        backend_fingerprint = fingerprint(
+            {
+                "backend": getattr(self.backend, "name", "unknown"),
+                "vector_store": {
+                    "backend": self.vector_store_resolution.descriptor.name,
+                    "version": self.vector_store_resolution.descriptor.version,
+                    "consistency": vector_store_consistency,
+                    "index_params": vector_store_index_params,
+                },
+            }
+        )
+        determinism_fp = determinism_fingerprint(
+            artifact.vector_fingerprint,
+            artifact.index_config_fingerprint,
+            artifact.execution_plan.algorithm if artifact.execution_plan else None,
+        )
         run_metadata = {
             "execution_id": correlation_id,
             "artifact_id": artifact.artifact_id,
@@ -614,6 +665,13 @@ class Orchestrator:
                 "uri_redacted": self.vector_store_resolution.uri_redacted,
                 "supports_exact": self.vector_store_resolution.descriptor.supports_exact,
                 "supports_ann": self.vector_store_resolution.descriptor.supports_ann,
+                "consistency": vector_store_consistency,
+            },
+            "determinism_fingerprints": {
+                "vectors": artifact.vector_fingerprint,
+                "config": artifact.index_config_fingerprint,
+                "backend": backend_fingerprint,
+                "determinism": determinism_fp,
             },
         }
         self._run_store.start(run_id, run_metadata)
@@ -664,7 +722,8 @@ class Orchestrator:
                 "execution_id": execution_result.execution_id,
             }
         except Exception as exc:
-            self._run_store.mark_failed(run_id, str(exc))
+            details = refusal_payload(exc) if is_refusal(exc) else None
+            self._run_store.mark_failed(run_id, str(exc), details=details)
             raise
 
     def explain(self, req: ExplainRequest) -> dict[str, Any]:
