@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from bijux_vex.core import errors
+from bijux_vex.core.errors.refusal import is_refusal, refusal_payload
 from bijux_vex.infra.metrics import METRICS
 
 HTTP_MAPPING: dict[type[BaseException], int] = {
@@ -21,6 +22,7 @@ HTTP_MAPPING: dict[type[BaseException], int] = {
     errors.AnnIndexBuildError: 500,
     errors.AnnQueryError: 500,
     errors.AnnBudgetError: 422,
+    errors.BudgetExceededError: 422,
     errors.ReplayNotSupportedError: 422,
     errors.PluginLoadError: 500,
     errors.PluginTimeoutError: 500,
@@ -42,6 +44,7 @@ CLI_EXIT_MAPPING: dict[type[BaseException], int] = {
     errors.AnnIndexBuildError: 10,
     errors.AnnQueryError: 11,
     errors.AnnBudgetError: 12,
+    errors.BudgetExceededError: 12,
     errors.ReplayNotSupportedError: 9,
     errors.PluginLoadError: 16,
     errors.PluginTimeoutError: 17,
@@ -62,46 +65,6 @@ def to_cli_exit(exc: Exception) -> int:
     raise exc
 
 
-def is_refusal(exc: Exception) -> bool:
-    return isinstance(
-        exc,
-        (
-            errors.ConfigurationError,
-            errors.DeterminismViolationError,
-            errors.BackendUnavailableError,
-            errors.BackendCapabilityError,
-        ),
-    )
-
-
-def refusal_payload(exc: Exception) -> dict[str, object]:
-    if isinstance(exc, errors.DeterminismViolationError):
-        return {
-            "reason": "determinism_violation",
-            "message": str(exc),
-            "remediation": "Use deterministic inputs or switch to non_deterministic contract with declared randomness.",
-        }
-    if isinstance(exc, errors.BackendCapabilityError):
-        return {
-            "reason": "backend_capability_missing",
-            "message": str(exc),
-            "remediation": "Select a backend that supports the requested capability or change the request.",
-        }
-    if isinstance(exc, errors.BackendUnavailableError):
-        return {
-            "reason": "backend_unavailable",
-            "message": str(exc),
-            "remediation": "Verify backend connectivity/credentials and retry.",
-        }
-    if isinstance(exc, errors.ConfigurationError):
-        return {
-            "reason": "configuration_error",
-            "message": str(exc),
-            "remediation": "Fix configuration and retry.",
-        }
-    return {"reason": "unknown", "message": str(exc), "remediation": "Inspect logs."}
-
-
 def record_failure(exc: Exception) -> None:
     if isinstance(
         exc,
@@ -112,3 +75,12 @@ def record_failure(exc: Exception) -> None:
         ),
     ):
         METRICS.increment("backend_failures_total", 1)
+
+
+__all__ = [
+    "to_http_status",
+    "to_cli_exit",
+    "is_refusal",
+    "refusal_payload",
+    "record_failure",
+]

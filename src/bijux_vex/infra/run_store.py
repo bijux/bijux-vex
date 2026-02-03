@@ -46,11 +46,16 @@ class RunStore:
         _atomic_write(run_dir / "result.json", result)
         _atomic_write(run_dir / "status.json", {"status": "complete"})
 
-    def mark_failed(self, run_id: str, reason: str) -> None:
+    def mark_failed(
+        self, run_id: str, reason: str, details: dict[str, Any] | None = None
+    ) -> None:
         run_dir = self._base / run_id
         if not run_dir.exists():
             return
-        _atomic_write(run_dir / "status.json", {"status": "failed", "reason": reason})
+        payload: dict[str, Any] = {"status": "failed", "reason": reason}
+        if details:
+            payload["details"] = details
+        _atomic_write(run_dir / "status.json", payload)
 
     def load(self, run_id: str) -> RunRecord:
         run_dir = self._base / run_id
