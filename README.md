@@ -15,12 +15,13 @@ Nothing is implicit: persistence, approximation, and randomness require explicit
 
 ## Quickstart
 
-```
-bijux vex ingest --doc "hello" --vector "[0,1,0]"
-bijux vex materialize --execution-contract deterministic
-bijux vex execute --vector "[0,1,0]" \
+```bash
+python -m bijux_vex.boundaries.cli.app ingest --doc "hello" --vector "[0,1,0]" --vector-store memory
+python -m bijux_vex.boundaries.cli.app materialize --execution-contract deterministic --vector-store memory
+python -m bijux_vex.boundaries.cli.app execute --vector "[0,1,0]" \
   --execution-contract deterministic \
-  --execution-intent exact_validation
+  --execution-intent exact_validation \
+  --vector-store memory
 ```
 
 ## Start Here

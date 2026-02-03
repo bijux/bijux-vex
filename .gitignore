@@ -31,3 +31,7 @@ benchmarks/artifacts/
 
 # Local runtime artifacts
 session.sqlite
+runs/
+*.sqlite
+*.faiss
+*.meta.json

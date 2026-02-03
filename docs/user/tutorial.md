@@ -15,69 +15,24 @@ pip install "bijux-vex[embeddings]"
 pip install "bijux-vex[vdb]"
 ```
 
-## Ingest (Bring Your Own Vectors)
+## Workflow A (BYO Vectors)
 
-```
-bijux vex ingest --doc "hello world" --vector "[0.0, 1.0]"
-```
-
-## Materialize an Artifact
-
-```
-bijux vex materialize --execution-contract deterministic
+```bash
+--8<-- "docs/examples/workflows/workflow_a.sh"
 ```
 
-## Execute (Exact)
+## Workflow B (Docs-Only + FAISS)
 
-```
-bijux vex execute \
-  --vector "[0.0, 1.0]" \
-  --execution-contract deterministic \
-  --execution-intent exact_validation
+```bash
+--8<-- "docs/examples/workflows/workflow_b.sh"
 ```
 
-## Explain + Compare
+## Workflow C (ANN Bounded + Explain)
 
-```
-bijux vex execute \
-  --vector "[0.0, 1.0]" \
-  --execution-contract deterministic \
-  --execution-intent exact_validation \
-  --explain
-```
-
-## Explicit Vector Store (FAISS)
-
-```
-bijux vex ingest \
-  --doc "hello world" \
-  --vector "[0.0, 1.0]" \
-  --vector-store faiss
-```
-
-```
-bijux vex materialize --execution-contract deterministic --vector-store faiss
-```
-
-```
-bijux vex execute \
-  --vector "[0.0, 1.0]" \
-  --execution-contract deterministic \
-  --execution-intent exact_validation \
-  --vector-store faiss
-```
-
-## Documents-Only (Explicit Embeddings)
-
-```
-bijux vex ingest \
-  --doc "hello world" \
-  --embed-model "sentence-transformers/all-MiniLM-L6-v2" \
-  --embed-provider sentence_transformers
+```bash
+--8<-- "docs/examples/workflows/workflow_c.sh"
 ```
 
 ## Provenance
 
-```
-bijux vex explain --result-id <result_id>
-```
+Workflow C includes `--explain` to show provenance output inline.

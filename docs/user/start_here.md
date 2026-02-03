@@ -17,6 +17,12 @@ Vector execution often hides determinism assumptions. bijux-vex makes execution 
 2) Concepts: [overview/concepts.md](../overview/concepts.md).
 3) Example walkthrough: [examples/overview.md](../examples/overview.md).
 
+## Quickstart (Workflow A)
+
+```bash
+--8<-- "docs/examples/workflows/workflow_a.sh"
+```
+
 ## What to read next
 1) Concepts: [overview/concepts.md](../overview/concepts.md) — mental model of execution vs storage.
 2) Contracts: [spec/system_contract.md](../spec/system_contract.md) and [spec/execution_contracts.md](../spec/execution_contracts.md).

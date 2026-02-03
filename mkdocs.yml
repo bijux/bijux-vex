@@ -34,10 +34,19 @@ nav:
   - User:
       - Start Here: user/start_here.md
       - Tutorial: user/tutorial.md
+      - Workflows: user/workflows.md
       - Troubleshooting: user/troubleshooting.md
       - Concept Map: user/concept_map.md
       - Not a Vector DB: user/not_a_vdb.md
       - BYO vs Embeddings: user/byo_vectors_vs_embeddings.md
+      - Determinism Guide: user/determinism_guide.md
+      - Operator Guide: user/operator_guide.md
+      - Security Guide: user/security_guide.md
+      - Vector Stores:
+          - Memory: user/vectorstores/memory.md
+          - FAISS: user/vectorstores/faiss.md
+          - Qdrant: user/vectorstores/qdrant.md
+      - Plugin Author Guide: user/plugin_author_guide.md
       - Misuse Patterns: user/misuse.md
       - External Misuse: user/external_misuse.md
   - Concepts:
