@@ -79,6 +79,16 @@ def replay(
                 message="Non-deterministic replay missing randomness annotations",
                 invariant_id="INV-041",
             )
+        if ann_runner is not None and hasattr(ann_runner, "index_info"):
+            stored_hash = None
+            if stored.approximation is not None:
+                stored_hash = stored.approximation.index_hash
+            current_info = ann_runner.index_info(artifact.artifact_id)
+            current_hash = current_info.get("index_hash") if current_info else None
+            if stored_hash and current_hash and stored_hash != current_hash:
+                raise ReplayNotSupportedError(
+                    message="Non-deterministic replay refused: ANN index hash mismatch"
+                )
         session = start_execution_session(
             artifact,
             request,

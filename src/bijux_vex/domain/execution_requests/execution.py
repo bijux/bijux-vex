@@ -21,6 +21,7 @@ from bijux_vex.core.types import ExecutionRequest, Result
 from bijux_vex.domain.execution_requests.budget import check_budget
 from bijux_vex.domain.execution_requests.plan import run_plan
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
+from bijux_vex.infra.logging import log_event
 
 
 def collect_results(
@@ -31,17 +32,30 @@ def collect_results(
     enforce_transition(session.state, ExecutionState.RUNNING)
     counters = {"vectors": 0, "distance": 0, "ann_probes": 0}
     results_buffer: list[Result] = []
-    results_iter = run_plan(
-        session.plan,
-        session.execution,
-        session.artifact,
-        resources,
-        ann_runner=ann_runner,
-        budget=session.budget,
-    )
     status = ExecutionStatus.SUCCESS
     failure_reason: str | None = None
     approximation: ApproximationReport | None = None
+    try:
+        results_iter = run_plan(
+            session.plan,
+            session.execution,
+            session.artifact,
+            resources,
+            ann_runner=ann_runner,
+            budget=session.budget,
+        )
+    except BudgetExceededError as exc:
+        failure_reason = _budget_failure_reason(exc)
+        status = ExecutionStatus.PARTIAL
+        if (
+            ann_runner is not None
+            and session.request.execution_contract
+            is ExecutionContract.NON_DETERMINISTIC
+        ):
+            approximation = ann_runner.approximation_report(
+                session.artifact, session.request, ()
+            )
+        return results_buffer, status, failure_reason, approximation
     try:
         for res in results_iter:
             counters["vectors"] += 1
@@ -50,6 +64,38 @@ def collect_results(
                 counters["ann_probes"] += 1
             check_budget(session.budget, counters, results_buffer)
             results_buffer.append(res)
+        if (
+            session.request.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and session.request.nd_settings is not None
+        ):
+            from bijux_vex.domain.execution_requests.nd_quality import (
+                adaptive_filter_results,
+            )
+
+            results_buffer, degraded, low_signal = adaptive_filter_results(
+                session.artifact.metric,
+                results_buffer,
+                session.request.nd_settings.outlier_threshold,
+                session.request.nd_settings.adaptive_k,
+            )
+            if degraded:
+                status = ExecutionStatus.PARTIAL
+                failure_reason = "nd_adaptive_k"
+                log_event(
+                    "nd_degraded",
+                    reason="adaptive_k",
+                    returned_k=len(results_buffer),
+                    requested_k=session.request.top_k,
+                )
+            if low_signal:
+                status = ExecutionStatus.PARTIAL
+                failure_reason = "nd_no_confident_neighbors"
+                log_event(
+                    "nd_low_signal",
+                    reason="outlier_threshold",
+                    returned_k=len(results_buffer),
+                    requested_k=session.request.top_k,
+                )
         if (
             ann_runner is not None
             and session.request.execution_contract

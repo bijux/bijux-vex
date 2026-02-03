@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import threading
+import time
 from typing import Any, cast
 import uuid
 
@@ -24,6 +25,7 @@ from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
     AnnIndexBuildError,
     AuthzDeniedError,
+    BackendUnavailableError,
     BudgetExceededError,
     InvariantError,
     NDExecutionUnavailableError,
@@ -167,6 +169,20 @@ class Orchestrator:
         self._run_store = RunStore()
         self._idempotency_lock = threading.Lock()
         self._idempotency_cache: dict[str, dict[str, Any]] = {}
+        self._nd_rate_limit = int(os.getenv("BIJUX_VEX_ND_RATE_LIMIT") or "0")
+        self._nd_rate_window_seconds = int(
+            os.getenv("BIJUX_VEX_ND_RATE_WINDOW_S") or "60"
+        )
+        self._nd_rate_window_start = time.time()
+        self._nd_rate_count = 0
+        self._nd_circuit_failures = 0
+        self._nd_circuit_max_failures = int(
+            os.getenv("BIJUX_VEX_ND_CIRCUIT_MAX_FAILURES") or "3"
+        )
+        self._nd_circuit_cooldown_s = int(
+            os.getenv("BIJUX_VEX_ND_CIRCUIT_COOLDOWN_S") or "30"
+        )
+        self._nd_circuit_open_until = 0.0
 
     def _tx(self) -> Tx:
         return cast(Tx, self.backend.tx_factory())
@@ -572,10 +588,15 @@ class Orchestrator:
                 artifact.artifact_id, vectors, artifact.metric, None
             )
             if index_info:
+                index_hash = index_info.get("index_hash")
+                extra: tuple[tuple[str, str], ...] = (
+                    ("ann_index_info", json.dumps(index_info, sort_keys=True)),
+                )
+                if index_hash:
+                    extra = extra + (("ann_index_hash", str(index_hash)),)
                 artifact = replace(
                     artifact,
-                    build_params=artifact.build_params
-                    + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                    build_params=artifact.build_params + extra,
                     index_state="ready",
                 )
         with self._tx() as tx:
@@ -630,6 +651,17 @@ class Orchestrator:
                 witness_rate=req.nd_witness_rate,
                 witness_sample_k=req.nd_witness_sample_k,
                 build_on_demand=req.nd_build_on_demand,
+                candidate_k=req.nd_candidate_k,
+                diversity_lambda=req.nd_diversity_lambda,
+                normalize_vectors=req.nd_normalize_vectors,
+                normalize_query=req.nd_normalize_query,
+                outlier_threshold=req.nd_outlier_threshold,
+                adaptive_k=req.nd_adaptive_k,
+                replay_strict=req.nd_replay_strict,
+                warmup_queries=req.nd_warmup_queries,
+                incremental_index=req.nd_incremental_index,
+                max_candidates=req.nd_max_candidates,
+                max_index_memory_mb=req.nd_max_index_memory_mb,
             )
             if (
                 req.nd_profile is not None
@@ -638,13 +670,47 @@ class Orchestrator:
                 or req.nd_witness_rate is not None
                 or req.nd_witness_sample_k is not None
                 or req.nd_build_on_demand
+                or req.nd_candidate_k is not None
+                or req.nd_diversity_lambda is not None
+                or req.nd_normalize_vectors
+                or req.nd_normalize_query
+                or req.nd_outlier_threshold is not None
+                or req.nd_adaptive_k
+                or req.nd_replay_strict
+                or req.nd_warmup_queries is not None
+                or req.nd_incremental_index is not None
+                or req.nd_max_candidates is not None
+                or req.nd_max_index_memory_mb is not None
             )
             else None
         )
+        if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+            now = time.time()
+            if now < self._nd_circuit_open_until:
+                raise BackendUnavailableError(
+                    message="ND backend temporarily unavailable (circuit open)"
+                )
+            if self._nd_rate_limit > 0:
+                if now - self._nd_rate_window_start > self._nd_rate_window_seconds:
+                    self._nd_rate_window_start = now
+                    self._nd_rate_count = 0
+                self._nd_rate_count += 1
+                if self._nd_rate_count > self._nd_rate_limit:
+                    raise BudgetExceededError(
+                        message="ND rate limit exceeded for this node"
+                    )
         if (
             artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
             and artifact.index_state != "ready"
         ):
+            if (
+                nd_settings is not None
+                and nd_settings.incremental_index is False
+                and not req.nd_build_on_demand
+            ):
+                raise AnnIndexBuildError(
+                    message="ANN index invalidated; rebuild required (incremental_index=false)"
+                )
             ann_runner = getattr(self.backend, "ann", None)
             if not req.nd_build_on_demand:
                 raise AnnIndexBuildError(
@@ -658,10 +724,15 @@ class Orchestrator:
             index_info = ann_runner.build_index(
                 artifact.artifact_id, vectors, artifact.metric, nd_settings
             )
+            index_hash = index_info.get("index_hash") if index_info else None
+            extra: tuple[tuple[str, str], ...] = (
+                ("ann_index_info", json.dumps(index_info, sort_keys=True)),
+            )
+            if index_hash:
+                extra = extra + (("ann_index_hash", str(index_hash)),)
             artifact = replace(
                 artifact,
-                build_params=artifact.build_params
-                + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                build_params=artifact.build_params + extra,
                 index_state="ready",
             )
             with self._tx() as tx:
@@ -721,6 +792,28 @@ class Orchestrator:
             randomness=randomness_profile,
             ann_runner=getattr(self.backend, "ann", None),
         )
+        if (
+            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
+            and nd_settings is not None
+            and nd_settings.warmup_queries is not None
+        ):
+            ann_runner = getattr(self.backend, "ann", None)
+            if ann_runner is not None and hasattr(ann_runner, "warmup"):
+                try:
+                    warmup_payload = json.loads(
+                        Path(nd_settings.warmup_queries).read_text()
+                    )
+                    if isinstance(warmup_payload, list):
+                        ann_runner.warmup(
+                            artifact.artifact_id,
+                            (
+                                tuple(item)
+                                for item in warmup_payload
+                                if isinstance(item, (list, tuple))
+                            ),
+                        )
+                except Exception:
+                    log_event("nd_warmup_failed", path=str(nd_settings.warmup_queries))
         vector_store_meta = getattr(self.stores.vectors, "vector_store_metadata", None)
         vector_store_index_params = None
         vector_store_consistency = None
@@ -764,6 +857,13 @@ class Orchestrator:
                 "nd_witness_rate": req.nd_witness_rate,
                 "nd_witness_sample_k": req.nd_witness_sample_k,
                 "nd_build_on_demand": req.nd_build_on_demand,
+                "nd_candidate_k": req.nd_candidate_k,
+                "nd_diversity_lambda": req.nd_diversity_lambda,
+                "nd_outlier_threshold": req.nd_outlier_threshold,
+                "nd_adaptive_k": req.nd_adaptive_k,
+                "nd_profile": req.nd_profile,
+                "nd_target_recall": req.nd_target_recall,
+                "nd_latency_budget_ms": req.nd_latency_budget_ms,
             },
             "backend": getattr(self.backend, "name", "unknown"),
             "vector_store": {
@@ -799,6 +899,8 @@ class Orchestrator:
                 raise BudgetExceededError(
                     message="Execution exceeded max_execution_time_ms limit"
                 )
+            if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+                self._nd_circuit_failures = 0
             with self._tx() as tx:
                 self.stores.ledger.put_execution_result(tx, execution_result)
                 updated_artifact = replace(
@@ -829,6 +931,17 @@ class Orchestrator:
                 "execution_id": execution_result.execution_id,
             }
         except Exception as exc:
+            if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+                self._nd_circuit_failures += 1
+                if self._nd_circuit_failures >= self._nd_circuit_max_failures:
+                    self._nd_circuit_open_until = (
+                        time.time() + self._nd_circuit_cooldown_s
+                    )
+                    log_event(
+                        "nd_circuit_open",
+                        failures=self._nd_circuit_failures,
+                        cooldown_s=self._nd_circuit_cooldown_s,
+                    )
             details = refusal_payload(exc) if is_refusal(exc) else None
             self._run_store.mark_failed(run_id, str(exc), details=details)
             raise

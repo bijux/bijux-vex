@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import replace
+import math
 
 from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
@@ -129,7 +131,78 @@ class ApproximateAnnAlgorithm(VectorExecutionAlgorithm):
             return self.runner.deterministic_fallback(
                 artifact.artifact_id, execution.request
             )
-        return self.runner.approximate_request(artifact, execution.request)
+        request = execution.request
+        nd_settings = request.nd_settings
+        if request.vector is None:
+            raise ValidationError(
+                message="execution vector required", invariant_id="INV-020"
+            )
+        candidate_k = request.top_k
+        if nd_settings and nd_settings.candidate_k:
+            candidate_k = max(candidate_k, int(nd_settings.candidate_k))
+        if nd_settings and nd_settings.max_candidates:
+            candidate_k = min(candidate_k, int(nd_settings.max_candidates))
+        if candidate_k != request.top_k:
+            request = replace(request, top_k=candidate_k)
+        candidates = list(self.runner.approximate_request(artifact, request))
+        if not candidates:
+            return ()
+        need_rescore = candidate_k != execution.request.top_k or nd_settings is not None
+        if not need_rescore:
+            return candidates
+        query_vec = execution.request.vector
+        if query_vec is None:
+            raise ValidationError(
+                message="execution vector required", invariant_id="INV-020"
+            )
+        qvec = _maybe_normalize(
+            query_vec, nd_settings.normalize_query if nd_settings else False
+        )
+        rescored: list[Result] = []
+        for res in candidates:
+            vec = vectors.get_vector(res.vector_id)
+            if vec is None:
+                continue
+            tvec = _ensure_tuple(vec).values
+            tvec = _maybe_normalize(
+                tvec, nd_settings.normalize_vectors if nd_settings else False
+            )
+            score = scoring.score(artifact.metric, qvec, tvec)
+            chunk = vectors.get_chunk(res.chunk_id)
+            document_id = chunk.document_id if chunk else res.document_id
+            rescored.append(
+                Result(
+                    request_id=execution.request.request_id,
+                    document_id=document_id,
+                    chunk_id=res.chunk_id,
+                    vector_id=res.vector_id,
+                    artifact_id=res.artifact_id,
+                    score=score,
+                    rank=0,
+                )
+            )
+        rescored.sort(key=scoring.tie_break_key)
+        if nd_settings and nd_settings.diversity_lambda is not None:
+            rescored = _mmr_rerank(
+                rescored,
+                vectors,
+                qvec,
+                artifact.metric,
+                float(nd_settings.diversity_lambda),
+                execution.request.top_k,
+            )
+        limited = rescored[: execution.request.top_k]
+        for idx, res in enumerate(limited, start=1):
+            limited[idx - 1] = Result(
+                request_id=res.request_id,
+                document_id=res.document_id,
+                chunk_id=res.chunk_id,
+                vector_id=res.vector_id,
+                artifact_id=res.artifact_id,
+                score=res.score,
+                rank=idx,
+            )
+        return limited
 
 
 def build_ann_algorithm(runner: AnnExecutionRequestRunner) -> ApproximateAnnAlgorithm:
@@ -152,6 +225,67 @@ def _ensure_tuple(vector: Vector) -> Vector:
         dimension=vector.dimension,
         model=vector.model,
     )
+
+
+def _maybe_normalize(vec: tuple[float, ...], enabled: bool) -> tuple[float, ...]:
+    if not enabled:
+        return vec
+    norm = math.sqrt(sum(v * v for v in vec))
+    if norm == 0:
+        return vec
+    return tuple(v / norm for v in vec)
+
+
+def _mmr_rerank(
+    results: list[Result],
+    vectors: VectorSource,
+    query_vec: tuple[float, ...],
+    metric: str,
+    diversity_lambda: float,
+    k: int,
+) -> list[Result]:
+    if not results:
+        return results
+    diversity_lambda = min(1.0, max(0.0, diversity_lambda))
+    selected: list[Result] = []
+    candidates = results[:]
+    query_sim: dict[str, float] = {}
+    for res in candidates:
+        vec = vectors.get_vector(res.vector_id)
+        if vec is None:
+            continue
+        v = _ensure_tuple(vec).values
+        query_sim[res.vector_id] = _cosine_similarity(query_vec, v)
+    while candidates and len(selected) < k:
+        best = None
+        best_score = None
+        for res in candidates:
+            sim_q = query_sim.get(res.vector_id, 0.0)
+            sim_selected = 0.0
+            for chosen in selected:
+                chosen_vec = vectors.get_vector(chosen.vector_id)
+                if chosen_vec is None:
+                    continue
+                sim_selected = max(
+                    sim_selected,
+                    _cosine_similarity(query_vec, _ensure_tuple(chosen_vec).values),
+                )
+            mmr = diversity_lambda * sim_q - (1.0 - diversity_lambda) * sim_selected
+            if best_score is None or mmr > best_score:
+                best_score = mmr
+                best = res
+        if best is None:
+            break
+        selected.append(best)
+        candidates = [c for c in candidates if c.vector_id != best.vector_id]
+    return selected + candidates
+
+
+def _cosine_similarity(a: tuple[float, ...], b: tuple[float, ...]) -> float:
+    denom = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(x * x for x in b))
+    if denom == 0:
+        return 0.0
+    return sum(x * y for x, y in zip(a, b, strict=True)) / denom
 
 
 register_algorithms()

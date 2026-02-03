@@ -26,6 +26,18 @@ class AnnExecutionRequestRunner(ABC):
     def reproducibility_bounds(self) -> str:
         """Human-readable bound on how far results may diverge across runs."""
 
+    @property
+    def supports_seed(self) -> bool:
+        return False
+
+    @property
+    def supports_incremental(self) -> bool:
+        return False
+
+    @property
+    def supports_compaction(self) -> bool:
+        return False
+
     def ensure_contract(self, artifact: ExecutionArtifact) -> None:
         if artifact.execution_contract is ExecutionContract.DETERMINISTIC:
             raise InvariantError(
@@ -55,6 +67,14 @@ class AnnExecutionRequestRunner(ABC):
         """Return index metadata for introspection."""
         _ = artifact_id
         return {}
+
+    def warmup(self, artifact_id: str, queries: Iterable[Iterable[float]]) -> None:
+        _ = (artifact_id, queries)
+        return None
+
+    def compact(self, artifact_id: str, vectors: Iterable[Vector], metric: str) -> None:
+        _ = (artifact_id, vectors, metric)
+        return None
 
     def query(
         self, vector: Iterable[float], k: int, **params: object

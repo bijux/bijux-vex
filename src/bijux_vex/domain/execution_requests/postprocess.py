@@ -20,9 +20,11 @@ from bijux_vex.core.runtime.vector_execution import execution_signature
 from bijux_vex.core.types import Result
 from bijux_vex.domain.execution_requests.budget import apply_budget_outcomes
 from bijux_vex.domain.execution_requests.nd_quality import (
+    calibrate_scores,
     compute_distance_margin,
     compute_rank_instability,
     compute_similarity_entropy,
+    stability_signature,
 )
 
 
@@ -111,15 +113,47 @@ def build_execution_result(
             notes=(failure_reason,) if failure_reason else (),
         )
         if approximation is not None:
+            calib_min, calib_max, calib_note = calibrate_scores(
+                session.artifact.metric, results_buffer
+            )
             approx_rank_instability = compute_rank_instability(
                 results_buffer, witness_results
             )
+            slo_met_latency = None
+            nd_settings = session.request.nd_settings
+            if nd_settings and nd_settings.latency_budget_ms is not None:
+                slo_met_latency = cost.wall_time_estimate_ms <= float(
+                    nd_settings.latency_budget_ms
+                )
+            slo_met_recall = None
+            if (
+                nd_settings
+                and nd_settings.target_recall is not None
+                and witness_report is not None
+            ):
+                slo_met_recall = witness_report.overlap_ratio >= float(
+                    nd_settings.target_recall
+                )
             approximation = replace(
                 approximation,
                 rank_instability=approx_rank_instability,
                 distance_margin=compute_distance_margin(results_buffer),
                 similarity_entropy=compute_similarity_entropy(results_buffer),
                 witness_report=witness_report,
+                calibrated_score_min=calib_min,
+                calibrated_score_max=calib_max,
+                calibration_note=calib_note,
+                stability_signature=stability_signature(
+                    session.artifact.metric, results_buffer
+                ),
+                adaptive_k_used=failure_reason == "nd_adaptive_k",
+                low_signal=failure_reason == "nd_no_confident_neighbors",
+                returned_k=len(results_buffer),
+                slo_met_latency=slo_met_latency,
+                slo_met_recall=slo_met_recall,
+                degraded=failure_reason
+                in {"nd_adaptive_k", "nd_no_confident_neighbors"},
+                degradation_reason=failure_reason,
             )
     execution_result = ExecutionResult(
         execution_id=session.execution.execution_id,

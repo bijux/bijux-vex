@@ -8,6 +8,7 @@ import math
 import random
 
 from bijux_vex.core.execution_result import WitnessReport
+from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.types import Result
 from bijux_vex.domain.execution_requests.compare import _rank_instability
 from bijux_vex.domain.execution_requests.scoring import tie_break_key
@@ -98,6 +99,59 @@ def should_run_witness(rate: float, seed: int | None) -> bool:
     return rng.random() < rate
 
 
+def similarity_from_score(metric: str, score: float) -> float:
+    if metric in {"l2", "cosine"}:
+        return -score
+    if metric == "dot":
+        return score
+    return -score
+
+
+def adaptive_filter_results(
+    metric: str,
+    results: list[Result],
+    threshold: float | None,
+    adaptive_k: bool,
+) -> tuple[list[Result], bool, bool]:
+    if threshold is None:
+        return results, False, False
+    filtered: list[Result] = []
+    for res in results:
+        sim = similarity_from_score(metric, res.score)
+        if sim >= threshold or not adaptive_k:
+            filtered.append(res)
+    degraded = len(filtered) < len(results)
+    low_signal = adaptive_k and not filtered
+    return filtered, degraded, low_signal
+
+
+def calibrate_scores(
+    metric: str, results: Iterable[Result]
+) -> tuple[float | None, float | None, str | None]:
+    ordered = _sorted_results(results)
+    if not ordered:
+        return None, None, None
+    sims = [similarity_from_score(metric, res.score) for res in ordered]
+    min_sim = min(sims)
+    max_sim = max(sims)
+    note = (
+        "similarity derived from metric; cross-backend comparisons require identical "
+        "metric + normalization"
+    )
+    return min_sim, max_sim, note
+
+
+def stability_signature(metric: str, results: Iterable[Result]) -> str:
+    ordered = _sorted_results(results)
+    payload = {
+        "metric": metric,
+        "ids": tuple(res.vector_id for res in ordered),
+        "margin": round(compute_distance_margin(ordered), 6),
+        "entropy": round(compute_similarity_entropy(ordered), 6),
+    }
+    return fingerprint(payload)
+
+
 __all__ = [
     "NDQualityMetrics",
     "compute_distance_margin",
@@ -105,4 +159,8 @@ __all__ = [
     "compute_rank_instability",
     "build_witness_report",
     "should_run_witness",
+    "similarity_from_score",
+    "adaptive_filter_results",
+    "calibrate_scores",
+    "stability_signature",
 ]

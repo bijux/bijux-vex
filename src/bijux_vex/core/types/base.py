@@ -86,6 +86,17 @@ class NDSettings:
     witness_rate: float | None = None
     witness_sample_k: int | None = None
     build_on_demand: bool = False
+    candidate_k: int | None = None
+    diversity_lambda: float | None = None
+    normalize_vectors: bool = False
+    normalize_query: bool = False
+    outlier_threshold: float | None = None
+    adaptive_k: bool = False
+    replay_strict: bool = False
+    warmup_queries: str | None = None
+    incremental_index: bool | None = None
+    max_candidates: int | None = None
+    max_index_memory_mb: int | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +161,20 @@ class ExecutionRequest:
                         message="nd_settings.target_recall must be within (0,1]"
                     )
                 if (
+                    self.nd_settings.diversity_lambda is not None
+                    and not 0.0 <= self.nd_settings.diversity_lambda <= 1.0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.diversity_lambda must be within [0,1]"
+                    )
+                if (
+                    self.nd_settings.candidate_k is not None
+                    and self.nd_settings.candidate_k < self.top_k
+                ):
+                    raise InvariantError(
+                        message="nd_settings.candidate_k must be >= top_k"
+                    )
+                if (
                     self.nd_settings.latency_budget_ms is not None
                     and self.nd_settings.latency_budget_ms <= 0
                 ):
@@ -168,6 +193,13 @@ class ExecutionRequest:
                 ):
                     raise InvariantError(
                         message="nd_settings.witness_sample_k must be positive"
+                    )
+                if (
+                    self.nd_settings.max_index_memory_mb is not None
+                    and self.nd_settings.max_index_memory_mb <= 0
+                ):
+                    raise InvariantError(
+                        message="nd_settings.max_index_memory_mb must be positive"
                     )
         if self.vector is not None:
             object.__setattr__(self, "vector", tuple(self.vector))

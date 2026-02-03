@@ -16,6 +16,7 @@ class ANNResultMetadata:
     n_candidates: int
     random_seed: int | None
     randomness_source: tuple[str, ...]
+    index_hash: str | None = None
 
 
 def derive_metadata(report: ApproximationReport) -> ANNResultMetadata:
@@ -28,6 +29,7 @@ def derive_metadata(report: ApproximationReport) -> ANNResultMetadata:
         n_candidates=report.n_candidates,
         random_seed=report.random_seed,
         randomness_source=report.randomness_sources,
+        index_hash=report.index_hash,
     )
 
 

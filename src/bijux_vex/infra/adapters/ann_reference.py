@@ -64,6 +64,14 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
     def reproducibility_bounds(self) -> str:
         return "bounded"
 
+    @property
+    def supports_seed(self) -> bool:
+        return True
+
+    @property
+    def supports_compaction(self) -> bool:
+        return True
+
     def approximate_request(
         self, artifact: ExecutionArtifact, request: ExecutionRequest
     ) -> Iterable[Result]:
@@ -93,6 +101,13 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         if not vectors_list:
             return {}
         dim = vectors_list[0].dimension
+        if isinstance(nd_settings, NDSettings) and nd_settings.max_index_memory_mb:
+            estimated_mb = (len(vectors_list) * dim * 8) / (1024 * 1024)
+            if estimated_mb > float(nd_settings.max_index_memory_mb):
+                raise BudgetExceededError(
+                    message="ANN index memory estimate exceeds limit",
+                    dimension="memory",
+                )
         data = [vec.values for vec in vectors_list]
         ids = [vec.vector_id for vec in vectors_list]
         build_started = time.time()
@@ -234,6 +249,13 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
             ]
             distance_error = mean(approx_scores) if approx_scores else 0.0
         truncation_ratio = len(materialized) / float(len(exact) or 1)
+        index_info = self._index_info.get(artifact.artifact_id, {})
+        backend_version = ""
+        if hnswlib is not None and hasattr(hnswlib, "__version__"):
+            backend_version = str(hnswlib.__version__)
+        index_hash = index_info.get("index_hash") if index_info else None
+        if index_hash is not None:
+            index_hash = str(index_hash)
         return ApproximationReport(
             recall_at_k=recall,
             rank_displacement=displacement,
@@ -241,6 +263,7 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
             algorithm="reference_ann_truncation",
             algorithm_version="v1",
             backend="memory",
+            backend_version=backend_version,
             randomness_sources=self.randomness_sources,
             deterministic_fallback_used=False,
             truncation_ratio=truncation_ratio,
@@ -252,6 +275,8 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
             query_parameters=self._query_params_metadata(),
             n_candidates=len(materialized),
             random_seed=self._seed_value(),
+            candidate_k=getattr(request.nd_settings, "candidate_k", None),
+            index_hash=index_hash,
         )
 
     # ---- internals -----------------------------------------------------
@@ -388,6 +413,24 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
                 )
             )
         return tuple(results)
+
+    def warmup(self, artifact_id: str, queries: Iterable[Iterable[float]]) -> None:
+        if hnswlib is None or self._index is None:
+            return
+        warm_k = 1
+        for query in queries:
+            try:
+                if query:
+                    self._index.knn_query([tuple(query)], k=warm_k)
+            except Exception as exc:
+                log_event("nd_warmup_query_failed", error=str(exc))
+
+    def compact(self, artifact_id: str, vectors: Iterable[Vector], metric: str) -> None:
+        # Rebuild index to remove tombstones or drift.
+        self.build_index(artifact_id, vectors, metric)
+        if self._index_dir and hnswlib is not None and self._index is not None:
+            index_file = self._index_dir / f"{artifact_id}.hnsw"
+            self._index.save_index(str(index_file))
 
     def _apply_nd_settings(self, request: ExecutionRequest) -> None:
         profile = "balanced"

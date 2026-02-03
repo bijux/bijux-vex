@@ -44,6 +44,7 @@ class ApproximationReport:
     algorithm: str = ""
     algorithm_version: str = ""
     backend: str = ""
+    backend_version: str = ""
     randomness_sources: tuple[str, ...] = ()
     deterministic_fallback_used: bool = False
     truncation_ratio: float | None = None
@@ -58,6 +59,19 @@ class ApproximationReport:
     distance_margin: float | None = None
     similarity_entropy: float | None = None
     witness_report: WitnessReport | None = None
+    calibrated_score_min: float | None = None
+    calibrated_score_max: float | None = None
+    calibration_note: str | None = None
+    low_signal: bool = False
+    adaptive_k_used: bool = False
+    returned_k: int | None = None
+    candidate_k: int | None = None
+    index_hash: str | None = None
+    stability_signature: str | None = None
+    slo_met_latency: bool | None = None
+    slo_met_recall: bool | None = None
+    degraded: bool = False
+    degradation_reason: str | None = None
 
 
 @dataclass(frozen=True)
