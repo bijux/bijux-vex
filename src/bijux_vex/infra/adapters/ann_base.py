@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import InvariantError
 from bijux_vex.core.execution_result import ApproximationReport
-from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
+from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result, Vector
 
 
 class AnnExecutionRequestRunner(ABC):
@@ -41,10 +41,20 @@ class AnnExecutionRequestRunner(ABC):
         )
 
     def build_index(
-        self, vectors: Iterable[Result], ids: Iterable[str], **params: object
-    ) -> None:
+        self,
+        artifact_id: str,
+        vectors: Iterable[Vector],
+        metric: str,
+        nd_settings: object | None = None,
+    ) -> dict[str, object]:
         """Optional index construction step."""
-        return None
+        _ = (artifact_id, vectors, metric, nd_settings)
+        return {}
+
+    def index_info(self, artifact_id: str) -> dict[str, object]:
+        """Return index metadata for introspection."""
+        _ = artifact_id
+        return {}
 
     def query(
         self, vector: Iterable[float], k: int, **params: object

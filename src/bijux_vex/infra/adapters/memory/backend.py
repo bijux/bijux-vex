@@ -437,9 +437,14 @@ def memory_backend() -> MemoryFixture:
         diagnostics=diagnostics,
     )
     try:
-        from bijux_vex.infra.adapters.ann_reference import ReferenceAnnRunner
+        from bijux_vex.infra.adapters.ann_hnsw import HnswAnnRunner
 
-        fixture = fixture._replace(ann=ReferenceAnnRunner(stores.vectors))
+        fixture = fixture._replace(ann=HnswAnnRunner(stores.vectors))
     except Exception:
-        fixture = fixture._replace(ann=None)
+        try:
+            from bijux_vex.infra.adapters.ann_reference import ReferenceAnnRunner
+
+            fixture = fixture._replace(ann=ReferenceAnnRunner(stores.vectors))
+        except Exception:
+            fixture = fixture._replace(ann=None)
     return fixture

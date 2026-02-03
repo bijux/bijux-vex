@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import platform
 import statistics
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     import numpy as np
@@ -177,6 +177,9 @@ def run_benchmark(
     engine = _build_engine(store_backend, store_uri)
     _ingest(engine, documents, vectors)
     artifact_id = _materialize(engine, contract)
+    exact_artifact_id = None
+    if mode == "ann":
+        exact_artifact_id = _materialize(engine, ExecutionContract.DETERMINISTIC)
 
     warmup_run = _execute_queries(
         engine,
@@ -203,7 +206,7 @@ def run_benchmark(
         repeats,
     )
 
-    return {
+    result: dict[str, Any] = {
         "dataset": {
             "size": len(documents),
             "dimension": int(vectors.shape[1]),
@@ -227,6 +230,39 @@ def run_benchmark(
             "machine": platform.machine(),
         },
     }
+    if mode == "ann" and exact_artifact_id:
+        overlaps = []
+        instabilities = []
+        recall_deltas = []
+        for query in queries:
+            payload = ExecutionRequestPayload(
+                request_text=None,
+                vector=tuple(float(x) for x in query.tolist()),
+                top_k=top_k,
+                execution_contract=ExecutionContract.NON_DETERMINISTIC,
+                execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
+                execution_mode=ExecutionMode.BOUNDED,
+                execution_budget=budget,
+                randomness_profile=randomness,
+            )
+            diff = engine.compare(
+                payload,
+                artifact_a_id=artifact_id,
+                artifact_b_id=exact_artifact_id,
+            )
+            overlaps.append(float(cast(float, diff["overlap_ratio"])))
+            instabilities.append(float(cast(float, diff["rank_instability"])))
+            recall_deltas.append(float(cast(float, diff["recall_delta"])))
+        mean_overlap = statistics.fmean(overlaps) if overlaps else 0.0
+        mean_instability = statistics.fmean(instabilities) if instabilities else 0.0
+        mean_recall_delta = statistics.fmean(recall_deltas) if recall_deltas else 0.0
+        result["quality"] = {
+            "overlap_at_k": mean_overlap,
+            "rank_instability": mean_instability,
+            "rank_correlation": 1.0 - mean_instability,
+            "recall_delta": mean_recall_delta,
+        }
+    return result
 
 
 def format_table(summary: dict[str, Any]) -> str:

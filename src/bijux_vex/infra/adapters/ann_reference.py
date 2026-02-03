@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from statistics import mean
+import time
 from typing import TYPE_CHECKING, Any
 
 try:  # pragma: no cover - optional dependency
@@ -17,10 +18,18 @@ if TYPE_CHECKING:
 
 from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
+from bijux_vex.core.errors import BudgetExceededError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.execution_result import ApproximationReport
-from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
+from bijux_vex.core.identity.ids import fingerprint
+from bijux_vex.core.types import (
+    ExecutionArtifact,
+    ExecutionRequest,
+    NDSettings,
+    Result,
+    Vector,
+)
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
 from bijux_vex.infra.logging import log_event
 
@@ -32,6 +41,9 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         self.vectors = vectors
         self._index: Any | None = None
         self._ids: list[str] = []
+        self._index_info: dict[str, dict[str, object]] = {}
+        self._tuning_samples = 0
+        self._k_scale = 1.0
         self._index_dir = Path(index_dir) if index_dir else None
         if self._index_dir:
             self._index_dir.mkdir(parents=True, exist_ok=True)
@@ -71,10 +83,74 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         return self.vectors.query(artifact_id, request)
 
     def build_index(
-        self, vectors: Iterable[Result], ids: Iterable[str], **params: object
-    ) -> None:
-        # Index is built lazily during first query; explicit build is a no-op for now.
-        return None
+        self,
+        artifact_id: str,
+        vectors: Iterable[Vector],
+        metric: str,
+        nd_settings: object | None = None,
+    ) -> dict[str, object]:
+        vectors_list = list(vectors)
+        if not vectors_list:
+            return {}
+        dim = vectors_list[0].dimension
+        data = [vec.values for vec in vectors_list]
+        ids = [vec.vector_id for vec in vectors_list]
+        build_started = time.time()
+        if hnswlib is None:
+            self._index = None
+        else:
+            space = "l2" if metric == "l2" else "cosine"
+            index = hnswlib.Index(space=space, dim=dim)
+            index.set_seed(0)
+            self._apply_nd_settings(
+                ExecutionRequest(
+                    request_id="ann-build",
+                    text=None,
+                    vector=vectors_list[0].values,
+                    top_k=10,
+                    execution_contract=ExecutionContract.NON_DETERMINISTIC,
+                    execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
+                    execution_mode=ExecutionMode.BOUNDED,
+                    nd_settings=nd_settings
+                    if isinstance(nd_settings, NDSettings)
+                    else None,
+                )
+            )
+            index.init_index(
+                max_elements=len(data),
+                ef_construction=100,
+                M=getattr(self, "_m", 8),
+            )
+            index.add_items(data, list(range(len(data))))
+            index.set_ef(getattr(self, "_ef_search", 10))
+            self._index = index
+            if self._index_dir:
+                index_file = self._index_dir / f"{artifact_id}.hnsw"
+                index.save_index(str(index_file))
+        build_time_ms = int((time.time() - build_started) * 1000)
+        index_hash = fingerprint(
+            {
+                "artifact_id": artifact_id,
+                "ids": ids,
+                "dimension": dim,
+                "metric": metric,
+            }
+        )
+        info: dict[str, object] = {
+            "index_kind": "hnswlib" if hnswlib else "none",
+            "index_params": {
+                "M": getattr(self, "_m", 8),
+                "ef_search": getattr(self, "_ef_search", 10),
+            },
+            "build_time_ms": build_time_ms,
+            "vector_count": len(ids),
+            "index_hash": index_hash,
+        }
+        self._index_info[artifact_id] = info
+        return info
+
+    def index_info(self, artifact_id: str) -> dict[str, object]:
+        return dict(self._index_info.get(artifact_id, {}))
 
     def query(
         self, vector: Iterable[float], k: int, **params: object
@@ -218,6 +294,26 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
                     index.set_ef(self._ef_search)
                     self._index = index
                     self._ids = ids
+                    self._index_info.setdefault(
+                        artifact.artifact_id,
+                        {
+                            "index_kind": "hnswlib",
+                            "index_params": {
+                                "M": getattr(self, "_m", 8),
+                                "ef_search": getattr(self, "_ef_search", 10),
+                            },
+                            "build_time_ms": None,
+                            "vector_count": len(ids),
+                            "index_hash": fingerprint(
+                                {
+                                    "artifact_id": artifact.artifact_id,
+                                    "ids": ids,
+                                    "dimension": dim,
+                                    "metric": artifact.metric,
+                                }
+                            ),
+                        },
+                    )
             if self._index is None:
                 space = "l2" if artifact.metric == "l2" else "ip"
                 index = hnswlib.Index(space=space, dim=dim)
@@ -233,6 +329,15 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         query = request.vector or ()
         if len(query) != dim:
             return ()
+        if (
+            request.execution_budget is not None
+            and request.execution_budget.max_memory_mb is not None
+            and len(self._ids) > int(request.execution_budget.max_memory_mb)
+        ):
+            raise BudgetExceededError(
+                message="ANN candidate budget exceeded",
+                dimension="candidates",
+            )
         self._last_query_metadata = {
             "query_params": {
                 "k": request.top_k or 1,
@@ -243,9 +348,23 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
             },
             "seed": 0,
         }
+        start = time.time()
+        query_k = max(1, int((request.top_k or 1) * self._k_scale))
         labels, distances = self._index.knn_query(
-            [query], k=min(request.top_k or 1, len(self._ids))
+            [query], k=min(query_k, len(self._ids))
         )
+        if request.nd_settings is not None:
+            elapsed_ms = int((time.time() - start) * 1000)
+            self._adaptive_tune(request, elapsed_ms)
+            if (
+                request.execution_budget is not None
+                and request.execution_budget.max_latency_ms is not None
+                and elapsed_ms > int(request.execution_budget.max_latency_ms)
+            ):
+                raise BudgetExceededError(
+                    message="ANN latency budget exceeded",
+                    dimension="latency",
+                )
         results: list[Result] = []
         for rank, (label, dist) in enumerate(
             zip(labels[0], distances[0], strict=True), start=1
@@ -314,8 +433,41 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         self._m = base_m
         self._ef_search = applied_ef
         self._nd_profile = profile
-        self._target_recall = target_recall
-        self._latency_budget_ms = latency_budget_ms
+
+    def _adaptive_tune(self, request: ExecutionRequest, elapsed_ms: int) -> None:
+        if request.nd_settings is None:
+            return
+        self._tuning_samples += 1
+        if self._tuning_samples > 5:
+            return
+        budget = request.nd_settings.latency_budget_ms
+        if budget is None:
+            return
+        if elapsed_ms > budget:
+            self._ef_search = max(10, int(self._ef_search * 0.8))
+            if self._k_scale > 0.5:
+                self._k_scale = 0.5
+                log_event(
+                    "nd_degrade_k",
+                    k_scale=self._k_scale,
+                    latency_ms=elapsed_ms,
+                    budget_ms=budget,
+                )
+            if self._nd_profile != "fast":
+                self._nd_profile = "fast"
+                log_event(
+                    "nd_degrade_profile",
+                    profile=self._nd_profile,
+                    latency_ms=elapsed_ms,
+                    budget_ms=budget,
+                )
+        elif (
+            request.nd_settings.target_recall
+            and request.nd_settings.target_recall > 0.95
+        ):
+            self._ef_search = min(200, int(self._ef_search * 1.2))
+        self._target_recall = request.nd_settings.target_recall
+        self._latency_budget_ms = request.nd_settings.latency_budget_ms
 
     def _query_params_metadata(self) -> tuple[tuple[str, str], ...]:
         params = self._last_query_metadata.get("query_params")

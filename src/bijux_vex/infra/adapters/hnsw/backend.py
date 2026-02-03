@@ -9,7 +9,7 @@ from typing import NamedTuple
 from bijux_vex.contracts.authz import AllowAllAuthz, Authz
 from bijux_vex.contracts.resources import BackendCapabilities, ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
-from bijux_vex.infra.adapters.ann_reference import ReferenceAnnRunner
+from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
 from bijux_vex.infra.adapters.sqlite.backend import (
     SQLiteTx,
     sqlite_backend,
@@ -21,7 +21,7 @@ class HnswFixture(NamedTuple):
     stores: ExecutionResources
     authz: Authz
     name: str
-    ann: ReferenceAnnRunner
+    ann: AnnExecutionRequestRunner
     diagnostics: dict[str, Callable[[], object]] | None = None
 
 
@@ -31,7 +31,16 @@ def hnsw_backend(
 ) -> HnswFixture:
     """Production-grade local backend: SQLite storage + persistent HNSW ANN index."""
     base = sqlite_backend(db_path=db_path)
-    runner = ReferenceAnnRunner(base.stores.vectors, index_dir=index_dir)
+    try:
+        from bijux_vex.infra.adapters.ann_hnsw import HnswAnnRunner
+
+        runner: AnnExecutionRequestRunner = HnswAnnRunner(
+            base.stores.vectors, index_dir=index_dir
+        )
+    except Exception:
+        from bijux_vex.infra.adapters.ann_reference import ReferenceAnnRunner
+
+        runner = ReferenceAnnRunner(base.stores.vectors)
     caps = BackendCapabilities(
         contracts={
             ExecutionContract.DETERMINISTIC,
