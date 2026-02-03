@@ -35,6 +35,15 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         nondeterministic_sources = ("approximate_execution",)
         lossy_dimensions = ("ranking",)
         execution_contract_status = "experimental"
+    vector_store_metadata = getattr(stores.vectors, "vector_store_metadata", None)
+    vector_store_backend = None
+    vector_store_uri = None
+    vector_store_index_params = None
+    if isinstance(vector_store_metadata, dict):
+        vector_store_backend = vector_store_metadata.get("backend")
+        vector_store_uri = vector_store_metadata.get("uri_redacted")
+        vector_store_index_params = vector_store_metadata.get("index_params")
+    embedding_metadata = dict(vector.metadata or ())
 
     return {
         "document": document,
@@ -50,7 +59,13 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         "nondeterministic_sources": nondeterministic_sources,
         "lossy_dimensions": lossy_dimensions,
         "embedding_source": vector.model,
-        "embedding_determinism": None,
-        "embedding_seed": None,
-        "embedding_model_version": None,
+        "embedding_determinism": embedding_metadata.get("embedding_determinism"),
+        "embedding_seed": embedding_metadata.get("embedding_seed"),
+        "embedding_model_version": embedding_metadata.get("embedding_model_version"),
+        "embedding_provider": embedding_metadata.get("embedding_provider"),
+        "embedding_device": embedding_metadata.get("embedding_device"),
+        "embedding_dtype": embedding_metadata.get("embedding_dtype"),
+        "vector_store_backend": vector_store_backend,
+        "vector_store_uri_redacted": vector_store_uri,
+        "vector_store_index_params": vector_store_index_params,
     }
