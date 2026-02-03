@@ -71,6 +71,17 @@ class ExecutionRequestPayload(StrictModel):
     nd_witness_rate: float | None = None
     nd_witness_sample_k: int | None = None
     nd_build_on_demand: bool = False
+    nd_candidate_k: int | None = None
+    nd_diversity_lambda: float | None = None
+    nd_normalize_vectors: bool = False
+    nd_normalize_query: bool = False
+    nd_outlier_threshold: float | None = None
+    nd_adaptive_k: bool = False
+    nd_replay_strict: bool = False
+    nd_warmup_queries: str | None = None
+    nd_incremental_index: bool | None = None
+    nd_max_candidates: int | None = None
+    nd_max_index_memory_mb: int | None = None
     correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
@@ -112,6 +123,17 @@ class ExecutionRequestPayload(StrictModel):
                 or self.nd_witness_rate is not None
                 or self.nd_witness_sample_k is not None
                 or self.nd_build_on_demand
+                or self.nd_candidate_k is not None
+                or self.nd_diversity_lambda is not None
+                or self.nd_normalize_vectors
+                or self.nd_normalize_query
+                or self.nd_outlier_threshold is not None
+                or self.nd_adaptive_k
+                or self.nd_replay_strict
+                or self.nd_warmup_queries is not None
+                or self.nd_incremental_index is not None
+                or self.nd_max_candidates is not None
+                or self.nd_max_index_memory_mb is not None
             ):
                 raise ValueError("nd_* settings require non_deterministic execution")
         else:
@@ -133,6 +155,11 @@ class ExecutionRequestPayload(StrictModel):
                 raise ValueError("nd_witness_rate must be within (0,1]")
             if self.nd_witness_sample_k is not None and self.nd_witness_sample_k <= 0:
                 raise ValueError("nd_witness_sample_k must be positive")
+            if (
+                self.nd_max_index_memory_mb is not None
+                and self.nd_max_index_memory_mb <= 0
+            ):
+                raise ValueError("nd_max_index_memory_mb must be positive")
             if self.randomness_profile and self.randomness_profile.seed is None:
                 sources = tuple(self.randomness_profile.sources or ())
                 if not sources or not self.randomness_profile.non_replayable:

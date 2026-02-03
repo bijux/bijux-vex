@@ -478,9 +478,46 @@
       },
       {
         "default": false,
+        "name": "nd_adaptive_k",
+        "opts": [
+          "--nd-adaptive-k"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
         "name": "nd_build_on_demand",
         "opts": [
           "--nd-build-on-demand"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_candidate_k",
+        "opts": [
+          "--nd-candidate-k"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_diversity_lambda",
+        "opts": [
+          "--nd-diversity-lambda"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_incremental_index",
+        "opts": [
+          "--nd-incremental-index",
+          "--nd-no-incremental-index"
         ],
         "param_type": "option",
         "required": false
@@ -496,9 +533,63 @@
       },
       {
         "default": null,
+        "name": "nd_max_candidates",
+        "opts": [
+          "--nd-max-candidates"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_max_index_memory_mb",
+        "opts": [
+          "--nd-max-index-memory-mb"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "nd_normalize_query",
+        "opts": [
+          "--nd-normalize-query"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "nd_normalize_vectors",
+        "opts": [
+          "--nd-normalize-vectors"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_outlier_threshold",
+        "opts": [
+          "--nd-outlier-threshold"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
         "name": "nd_profile",
         "opts": [
           "--nd-profile"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": false,
+        "name": "nd_replay_strict",
+        "opts": [
+          "--nd-replay-strict"
         ],
         "param_type": "option",
         "required": false
@@ -508,6 +599,15 @@
         "name": "nd_target_recall",
         "opts": [
           "--nd-target-recall"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "nd_warmup_queries",
+        "opts": [
+          "--nd-warmup-queries"
         ],
         "param_type": "option",
         "required": false
@@ -828,6 +928,51 @@
     "params": []
   },
   {
+    "command": "nd",
+    "params": []
+  },
+  {
+    "command": "nd tune",
+    "params": [
+      {
+        "default": 10,
+        "name": "samples",
+        "opts": [
+          "--samples"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": 10,
+        "name": "top_k",
+        "opts": [
+          "--top-k"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "uri",
+        "opts": [
+          "--uri"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": "memory",
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
     "command": "replay",
     "params": [
       {
@@ -1016,6 +1161,38 @@
   {
     "command": "vdb",
     "params": []
+  },
+  {
+    "command": "vdb compact",
+    "params": [
+      {
+        "default": "ann",
+        "name": "mode",
+        "opts": [
+          "--mode"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "uri",
+        "opts": [
+          "--uri"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": true
+      }
+    ]
   },
   {
     "command": "vdb rebuild",

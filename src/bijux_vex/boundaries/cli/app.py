@@ -6,7 +6,9 @@ from dataclasses import asdict, dataclass, replace
 import json
 import os
 from pathlib import Path
+from statistics import mean
 import sys
+import time
 from typing import no_type_check
 import uuid
 import zipfile
@@ -50,7 +52,7 @@ from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.identity.ids import fingerprint
 from bijux_vex.core.runtime.vector_execution import RandomnessProfile
-from bijux_vex.core.types import ExecutionBudget
+from bijux_vex.core.types import ExecutionBudget, ExecutionRequest, NDSettings
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
 from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
 from bijux_vex.infra.logging import enable_trace, trace_events
@@ -61,10 +63,16 @@ from bijux_vex.services.execution_engine import VectorExecutionEngine
 app = typer.Typer(add_completion=False)
 vdb_app = typer.Typer(add_completion=False, help="Vector DB utilities")
 app.add_typer(vdb_app, name="vdb")
+nd_app = typer.Typer(add_completion=False, help="ND utilities")
+app.add_typer(nd_app, name="nd")
 config_app = typer.Typer(add_completion=False, help="Configuration utilities")
 app.add_typer(config_app, name="config")
 artifact_app = typer.Typer(add_completion=False, help="Artifact bundle utilities")
 app.add_typer(artifact_app, name="artifact")
+
+ND_WARMUP_OPTION = typer.Option(
+    None, "--nd-warmup-queries", help="Path to JSON warmup query vectors"
+)
 
 
 @dataclass(frozen=True)
@@ -656,6 +664,41 @@ def execute(
     nd_build_on_demand: bool = typer.Option(
         False, "--nd-build-on-demand", help="Build ANN index on demand"
     ),
+    nd_candidate_k: int | None = typer.Option(
+        None, "--nd-candidate-k", help="ANN candidate pool size for reranking"
+    ),
+    nd_diversity_lambda: float | None = typer.Option(
+        None, "--nd-diversity-lambda", help="MMR diversity lambda (0-1)"
+    ),
+    nd_normalize_vectors: bool = typer.Option(
+        False, "--nd-normalize-vectors", help="Normalize candidate vectors"
+    ),
+    nd_normalize_query: bool = typer.Option(
+        False, "--nd-normalize-query", help="Normalize query vector"
+    ),
+    nd_outlier_threshold: float | None = typer.Option(
+        None, "--nd-outlier-threshold", help="Low-signal similarity threshold"
+    ),
+    nd_adaptive_k: bool = typer.Option(
+        False, "--nd-adaptive-k", help="Allow adaptive k below requested top_k"
+    ),
+    nd_replay_strict: bool = typer.Option(
+        False, "--nd-replay-strict", help="Refuse replay if index/params differ"
+    ),
+    nd_warmup_queries: Path | None = ND_WARMUP_OPTION,
+    nd_incremental_index: bool | None = typer.Option(
+        None,
+        "--nd-incremental-index/--nd-no-incremental-index",
+        help="Allow incremental index updates",
+    ),
+    nd_max_candidates: int | None = typer.Option(
+        None, "--nd-max-candidates", help="Hard cap for ANN candidates"
+    ),
+    nd_max_index_memory_mb: int | None = typer.Option(
+        None,
+        "--nd-max-index-memory-mb",
+        help="Hard cap for ANN index memory (MB)",
+    ),
     compare_to: str | None = typer.Option(
         None, "--compare-to", help="Compare ND run to exact (exact)"
     ),
@@ -706,6 +749,17 @@ def execute(
             nd_witness_rate=nd_witness_rate,
             nd_witness_sample_k=nd_witness_sample_k,
             nd_build_on_demand=nd_build_on_demand,
+            nd_candidate_k=nd_candidate_k,
+            nd_diversity_lambda=nd_diversity_lambda,
+            nd_normalize_vectors=nd_normalize_vectors,
+            nd_normalize_query=nd_normalize_query,
+            nd_outlier_threshold=nd_outlier_threshold,
+            nd_adaptive_k=nd_adaptive_k,
+            nd_replay_strict=nd_replay_strict,
+            nd_warmup_queries=str(nd_warmup_queries) if nd_warmup_queries else None,
+            nd_incremental_index=nd_incremental_index,
+            nd_max_candidates=nd_max_candidates,
+            nd_max_index_memory_mb=nd_max_index_memory_mb,
             correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
@@ -1018,10 +1072,13 @@ def vdb_rebuild(
             index_info = ann_runner.build_index(
                 artifact.artifact_id, vectors, artifact.metric, None
             )
+            index_hash = index_info.get("index_hash") if index_info else None
+            extra = (("ann_index_info", json.dumps(index_info, sort_keys=True)),)
+            if index_hash:
+                extra = extra + (("ann_index_hash", str(index_hash)),)
             updated = replace(
                 artifact,
-                build_params=artifact.build_params
-                + (("ann_index_info", json.dumps(index_info, sort_keys=True)),),
+                build_params=artifact.build_params + extra,
                 index_state="ready",
             )
             with engine._tx() as tx:
@@ -1043,6 +1100,124 @@ def vdb_rebuild(
         else:
             payload["error"] = {"message": str(exc)}
         _emit(ctx, payload)
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@vdb_app.command("compact")
+@no_type_check
+def vdb_compact(
+    ctx: typer.Context,
+    vector_store: str = typer.Option(..., "--vector-store"),
+    uri: str | None = typer.Option(None, "--uri"),
+    mode: str = typer.Option("ann", "--mode", help="exact|ann"),
+) -> None:
+    try:
+        engine = VectorExecutionEngine(
+            config=_build_config(vector_store=vector_store, vector_store_uri=uri)
+        )
+        index_type = "exact" if mode == "exact" else "ann"
+        if index_type == "ann":
+            ann_runner = getattr(engine.backend, "ann", None)
+            if ann_runner is None or not getattr(
+                ann_runner, "supports_compaction", False
+            ):
+                raise ValidationError(
+                    message="Selected backend does not support ANN compaction"
+                )
+            artifact = engine.stores.ledger.get_artifact(engine.default_artifact_id)
+            if artifact is None:
+                raise ValidationError(
+                    message="No artifact available for ANN compaction"
+                )
+            vectors = list(engine.stores.vectors.list_vectors())
+            ann_runner.compact(artifact.artifact_id, vectors, artifact.metric)
+            _emit(ctx, {"status": "compacted", "backend": vector_store})
+            return
+        adapter = engine.vector_store_resolution.adapter
+        if not hasattr(adapter, "compact"):
+            raise ValidationError(
+                message="Selected vector store does not support compaction"
+            )
+        status = adapter.compact(index_type=index_type)
+        _emit(ctx, status)
+    except BijuxError as exc:
+        record_failure(exc)
+        payload = {"backend": vector_store, "reachable": False}
+        if is_refusal(exc):
+            payload["error"] = refusal_payload(exc)
+        else:
+            payload["error"] = {"message": str(exc)}
+        _emit(ctx, payload)
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@nd_app.command("tune")
+@no_type_check
+def nd_tune(
+    ctx: typer.Context,
+    vector_store: str = typer.Option("memory", "--vector-store"),
+    uri: str | None = typer.Option(None, "--uri"),
+    top_k: int = typer.Option(10, "--top-k"),
+    samples: int = typer.Option(10, "--samples"),
+) -> None:
+    try:
+        engine = VectorExecutionEngine(
+            config=_build_config(vector_store=vector_store, vector_store_uri=uri)
+        )
+        ann_runner = getattr(engine.backend, "ann", None)
+        if ann_runner is None:
+            raise ValidationError(message="ANN runner required for tuning")
+        artifact = engine.stores.ledger.get_artifact(engine.default_artifact_id)
+        if artifact is None:
+            raise ValidationError(message="No artifact available for tuning")
+        vectors = list(engine.stores.vectors.list_vectors())
+        if not vectors:
+            raise ValidationError(message="No vectors available for tuning")
+        queries = [tuple(v.values) for v in vectors[: max(1, samples)]]
+        profiles = ("fast", "balanced", "accurate")
+        results: list[dict[str, object]] = []
+        for profile in profiles:
+            nd_settings = NDSettings(profile=profile)
+            request = ExecutionRequest(
+                request_id=f"nd-tune-{profile}",
+                text=None,
+                vector=queries[0],
+                top_k=top_k,
+                execution_contract=ExecutionContract.NON_DETERMINISTIC,
+                execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
+                execution_mode=ExecutionMode.BOUNDED,
+                nd_settings=nd_settings,
+            )
+            latencies: list[float] = []
+            for query in queries:
+                start = time.perf_counter()
+                _ = list(
+                    ann_runner.approximate_request(
+                        artifact,
+                        replace(request, vector=query),
+                    )
+                )
+                latencies.append((time.perf_counter() - start) * 1000)
+            p95 = (
+                sorted(latencies)[int(len(latencies) * 0.95) - 1] if latencies else 0.0
+            )
+            results.append(
+                {
+                    "profile": profile,
+                    "avg_ms": round(mean(latencies), 3) if latencies else 0.0,
+                    "p95_ms": round(p95, 3),
+                    "samples": len(latencies),
+                }
+            )
+        recommended = min(results, key=lambda r: r["avg_ms"])["profile"]
+        _emit(ctx, {"profiles": results, "recommended": recommended})
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
 

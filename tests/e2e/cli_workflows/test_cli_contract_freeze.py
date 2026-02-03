@@ -35,6 +35,7 @@ CLI_HELP = """
 │ metrics                                                                      │
 │ debug-bundle                                                                 │
 │ vdb             Vector DB utilities                                          │
+│ nd              ND utilities                                                 │
 │ config          Configuration utilities                                      │
 │ artifact        Artifact bundle utilities                                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯

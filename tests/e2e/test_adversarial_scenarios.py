@@ -180,8 +180,8 @@ def test_budget_exhaustion_mid_execution_is_partial(backend_nd):
         budget=ExecutionBudget(max_vectors=5, max_ann_probes=1),
     )
     session = start_execution_session(art, req, backend_nd.stores, ann_runner=ann)
-    with pytest.raises(BudgetExceededError):
-        execute_request(session, backend_nd.stores, ann_runner=ann)
+    result, _ = execute_request(session, backend_nd.stores, ann_runner=ann)
+    assert result.status.name == "PARTIAL"
 
 
 def test_ann_fallback_declared_bounds_violate(backend_nd):
