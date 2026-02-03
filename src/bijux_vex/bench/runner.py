@@ -259,8 +259,14 @@ def run_benchmark(
         result["quality"] = {
             "overlap_at_k": mean_overlap,
             "rank_instability": mean_instability,
-            "rank_correlation": 1.0 - mean_instability,
+            "kendall_tau_estimate": 1.0 - mean_instability,
             "recall_delta": mean_recall_delta,
+            "latency_distribution_ms": {
+                "p50": run.p50,
+                "p95": run.p95,
+                "p99": run.p99,
+            },
+            "cost_estimate_ms": run.mean,
         }
     return result
 
