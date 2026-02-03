@@ -62,6 +62,7 @@ from bijux_vex.domain.execution_requests.execute import (
     execute_request,
     start_execution_session,
 )
+from bijux_vex.domain.nd.model import NDExecutionModel
 from bijux_vex.domain.provenance.lineage import explain_result
 from bijux_vex.domain.provenance.replay import replay
 from bijux_vex.infra.adapters.sqlite.backend import sqlite_backend
@@ -270,66 +271,6 @@ class Orchestrator:
             )
         return artifact
 
-    def _build_nd_settings(self, req: ExecutionRequestPayload) -> NDSettings | None:
-        nd_settings = NDSettings(
-            profile=req.nd_profile,
-            target_recall=req.nd_target_recall,
-            latency_budget_ms=req.nd_latency_budget_ms,
-            witness_rate=req.nd_witness_rate,
-            witness_sample_k=req.nd_witness_sample_k,
-            witness_mode=req.nd_witness_mode,
-            build_on_demand=req.nd_build_on_demand,
-            candidate_k=req.nd_candidate_k,
-            diversity_lambda=req.nd_diversity_lambda,
-            normalize_vectors=req.nd_normalize_vectors,
-            normalize_query=req.nd_normalize_query,
-            outlier_threshold=req.nd_outlier_threshold,
-            low_signal_margin=req.nd_low_signal_margin,
-            adaptive_k=req.nd_adaptive_k,
-            low_signal_refuse=req.nd_low_signal_refuse,
-            replay_strict=req.nd_replay_strict,
-            warmup_queries=req.nd_warmup_queries,
-            incremental_index=req.nd_incremental_index,
-            max_candidates=req.nd_max_candidates,
-            max_index_memory_mb=req.nd_max_index_memory_mb,
-            two_stage=req.nd_two_stage,
-            m=req.nd_m,
-            ef_construction=req.nd_ef_construction,
-            ef_search=req.nd_ef_search,
-            max_ef_search=req.nd_max_ef_search,
-            space=req.nd_space,
-        )
-        if (
-            req.nd_profile is not None
-            or req.nd_target_recall is not None
-            or req.nd_latency_budget_ms is not None
-            or req.nd_witness_rate is not None
-            or req.nd_witness_sample_k is not None
-            or req.nd_witness_mode is not None
-            or req.nd_build_on_demand
-            or req.nd_candidate_k is not None
-            or req.nd_diversity_lambda is not None
-            or req.nd_normalize_vectors
-            or req.nd_normalize_query
-            or req.nd_outlier_threshold is not None
-            or req.nd_low_signal_margin is not None
-            or req.nd_adaptive_k
-            or req.nd_low_signal_refuse
-            or req.nd_replay_strict
-            or req.nd_warmup_queries is not None
-            or req.nd_incremental_index is not None
-            or req.nd_max_candidates is not None
-            or req.nd_max_index_memory_mb is not None
-            or req.nd_two_stage is False
-            or req.nd_m is not None
-            or req.nd_ef_construction is not None
-            or req.nd_ef_search is not None
-            or req.nd_max_ef_search is not None
-            or req.nd_space is not None
-        ):
-            return nd_settings
-        return None
-
     def _enforce_nd_circuit(self, req: ExecutionRequestPayload) -> None:
         if req.execution_contract is not ExecutionContract.NON_DETERMINISTIC:
             return
@@ -347,86 +288,6 @@ class Orchestrator:
                 raise BudgetExceededError(
                     message="ND rate limit exceeded for this node"
                 )
-
-    def _ensure_ann_index(
-        self,
-        artifact: ExecutionArtifact,
-        nd_settings: NDSettings | None,
-        req: ExecutionRequestPayload,
-    ) -> ExecutionArtifact:
-        if artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC:
-            ann_runner = getattr(self.backend, "ann", None)
-            index_info: dict[str, object] | None = None
-            if ann_runner is not None and hasattr(ann_runner, "index_info"):
-                index_info = ann_runner.index_info(artifact.artifact_id)
-            needs_build = artifact.index_state != "ready" or not index_info
-            if needs_build:
-                if (
-                    nd_settings is not None
-                    and nd_settings.incremental_index is False
-                    and not req.nd_build_on_demand
-                ):
-                    raise AnnIndexBuildError(
-                        message="ANN index invalidated; rebuild required (incremental_index=false)"
-                    )
-                if not req.nd_build_on_demand:
-                    raise AnnIndexBuildError(
-                        message="ANN index missing; run materialize --index-mode ann or set --nd-build-on-demand"
-                    )
-                if ann_runner is None:
-                    raise NDExecutionUnavailableError(
-                        message="ANN runner required to build ANN index"
-                    )
-                vectors = list(self.stores.vectors.list_vectors())
-                index_info = ann_runner.build_index(
-                    artifact.artifact_id, vectors, artifact.metric, nd_settings
-                )
-                index_hash = index_info.get("index_hash") if index_info else None
-                extra: tuple[tuple[str, str], ...] = (
-                    ("ann_index_info", json.dumps(index_info, sort_keys=True)),
-                )
-                if index_hash:
-                    extra = extra + (("ann_index_hash", str(index_hash)),)
-                artifact = replace(
-                    artifact,
-                    build_params=artifact.build_params + extra,
-                    index_state="ready",
-                )
-                with self._tx() as tx:
-                    self.stores.ledger.put_artifact(tx, artifact)
-        return artifact
-
-    def _validate_ann_index_drift(self, artifact: ExecutionArtifact) -> None:
-        if (
-            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and artifact.index_state == "ready"
-        ):
-            ann_runner = getattr(self.backend, "ann", None)
-            ann_info = (
-                ann_runner.index_info(artifact.artifact_id)
-                if ann_runner is not None and hasattr(ann_runner, "index_info")
-                else None
-            )
-            build_params = dict(artifact.build_params)
-            stored_hash = build_params.get("ann_index_hash")
-            current_hash = ann_info.get("index_hash") if ann_info else None
-            if stored_hash and current_hash and stored_hash != str(current_hash):
-                raise AnnIndexBuildError(
-                    message="ANN index drift detected (hash mismatch)"
-                )
-            if (
-                self._latest_vector_fingerprint
-                and self._latest_vector_fingerprint != artifact.vector_fingerprint
-            ):
-                raise AnnIndexBuildError(
-                    message="ANN index drift detected (vector fingerprint mismatch)"
-                )
-            if ann_info and "vector_count" in ann_info:
-                current_count = sum(1 for _ in self.stores.vectors.list_vectors())
-                if int(ann_info["vector_count"]) != int(current_count):
-                    raise AnnIndexBuildError(
-                        message="ANN index drift detected (vector count mismatch)"
-                    )
 
     def _build_randomness_profile(
         self, req: ExecutionRequestPayload
@@ -484,32 +345,6 @@ class Orchestrator:
             ),
             nd_settings=nd_settings,
         )
-
-    def _warmup_nd(
-        self, artifact: ExecutionArtifact, nd_settings: NDSettings | None
-    ) -> None:
-        if (
-            artifact.execution_contract is ExecutionContract.NON_DETERMINISTIC
-            and nd_settings is not None
-            and nd_settings.warmup_queries is not None
-        ):
-            ann_runner = getattr(self.backend, "ann", None)
-            if ann_runner is not None and hasattr(ann_runner, "warmup"):
-                try:
-                    warmup_payload = json.loads(
-                        Path(nd_settings.warmup_queries).read_text()
-                    )
-                    if isinstance(warmup_payload, list):
-                        ann_runner.warmup(
-                            artifact.artifact_id,
-                            (
-                                tuple(item)
-                                for item in warmup_payload
-                                if isinstance(item, (list, tuple))
-                            ),
-                        )
-                except Exception:
-                    log_event("nd_warmup_failed", path=str(nd_settings.warmup_queries))
 
     def _build_run_metadata(
         self,
@@ -977,24 +812,14 @@ class Orchestrator:
         }
 
     def execute(self, req: ExecutionRequestPayload) -> dict[str, Any]:
-        self._validate_execute_limits(req)
-        correlation_id = _resolve_correlation_id(req.correlation_id)
-        run_id = f"{correlation_id}-{uuid.uuid4().hex}"
-        artifact = self._resolve_execution_artifact(req)
-        nd_settings = self._build_nd_settings(req)
-        self._enforce_nd_circuit(req)
-        artifact = self._ensure_ann_index(artifact, nd_settings, req)
-        self._validate_ann_index_drift(artifact)
-        randomness_profile = self._build_randomness_profile(req)
-        request = self._build_execution_request(req, correlation_id, nd_settings)
-        session = start_execution_session(
+        (
+            correlation_id,
+            run_id,
             artifact,
+            randomness_profile,
+            nd_model,
             request,
-            self.stores,
-            randomness=randomness_profile,
-            ann_runner=getattr(self.backend, "ann", None),
-        )
-        self._warmup_nd(artifact, nd_settings)
+        ) = self._normalize_execute_request(req)
         vector_store_meta = getattr(self.stores.vectors, "vector_store_metadata", None)
         vector_store_index_params = None
         vector_store_consistency = None
@@ -1039,10 +864,12 @@ class Orchestrator:
         log_event("query_start", correlation_id=correlation_id, top_k=req.top_k)
         try:
             with timed("query_latency_ms") as elapsed:
-                execution_result, results = execute_request(
-                    session,
-                    self.stores,
-                    ann_runner=getattr(self.backend, "ann", None),
+                execution_result, results = self._dispatch_execution(
+                    req,
+                    artifact,
+                    request,
+                    randomness_profile,
+                    nd_model,
                 )
             log_event("query_end", correlation_id=correlation_id, elapsed_ms=elapsed())
             limits = self.config.resource_limits
@@ -1056,35 +883,13 @@ class Orchestrator:
                 )
             if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
                 self._nd_circuit_failures = 0
-            with self._tx() as tx:
-                self.stores.ledger.put_execution_result(tx, execution_result)
-                updated_artifact = replace(
-                    artifact,
-                    execution_plan=execution_result.plan,
-                    execution_signature=execution_result.signature,
-                    execution_id=execution_result.execution_id,
-                )
-                self.stores.ledger.put_artifact(tx, updated_artifact)
-                artifact = updated_artifact
-            self._run_store.finalize(
+            return self._finalize_execution(
+                artifact,
+                execution_result,
+                results,
                 run_id,
-                {
-                    "execution_result": execution_result.to_primitive(),
-                    "results": [r.vector_id for r in results],
-                },
+                correlation_id,
             )
-            return {
-                "results": [r.vector_id for r in results],
-                "correlation_id": correlation_id,
-                "execution_contract": artifact.execution_contract.value,
-                "execution_contract_status": (
-                    "stable"
-                    if artifact.execution_contract is ExecutionContract.DETERMINISTIC
-                    else "experimental"
-                ),
-                "replayable": artifact.replayable,
-                "execution_id": execution_result.execution_id,
-            }
         except Exception as exc:
             if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
                 self._nd_circuit_failures += 1
@@ -1100,6 +905,110 @@ class Orchestrator:
             details = refusal_payload(exc) if is_refusal(exc) else None
             self._run_store.mark_failed(run_id, str(exc), details=details)
             raise
+
+    def _normalize_execute_request(
+        self, req: ExecutionRequestPayload
+    ) -> tuple[
+        str,
+        str,
+        ExecutionArtifact,
+        RandomnessProfile | None,
+        NDExecutionModel,
+        ExecutionRequest,
+    ]:
+        self._validate_execute_limits(req)
+        correlation_id = _resolve_correlation_id(req.correlation_id)
+        run_id = f"{correlation_id}-{uuid.uuid4().hex}"
+        artifact = self._resolve_execution_artifact(req)
+        randomness_profile = self._build_randomness_profile(req)
+        nd_model = NDExecutionModel(
+            stores=self.stores,
+            ann_runner=getattr(self.backend, "ann", None),
+            latest_vector_fingerprint=self._latest_vector_fingerprint,
+        )
+        nd_settings = nd_model.build_settings(req)
+        request = self._build_execution_request(req, correlation_id, nd_settings)
+        if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+            self._enforce_nd_circuit(req)
+        return (
+            correlation_id,
+            run_id,
+            artifact,
+            randomness_profile,
+            nd_model,
+            request,
+        )
+
+    def _dispatch_execution(
+        self,
+        req: ExecutionRequestPayload,
+        artifact: ExecutionArtifact,
+        request: ExecutionRequest,
+        randomness_profile: RandomnessProfile | None,
+        nd_model: NDExecutionModel,
+    ) -> tuple[Any, Any]:
+        if req.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+            return nd_model.execute(
+                artifact,
+                request,
+                randomness_profile,
+                build_on_demand=req.nd_build_on_demand,
+            )
+        session = start_execution_session(
+            artifact,
+            request,
+            self.stores,
+            randomness=randomness_profile,
+            ann_runner=getattr(self.backend, "ann", None),
+        )
+        return execute_request(
+            session,
+            self.stores,
+            ann_runner=getattr(self.backend, "ann", None),
+        )
+
+    def _finalize_execution(
+        self,
+        artifact: ExecutionArtifact,
+        execution_result: Any,
+        results: Any,
+        run_id: str,
+        correlation_id: str,
+    ) -> dict[str, Any]:
+        with self._tx() as tx:
+            self.stores.ledger.put_execution_result(tx, execution_result)
+            updated_artifact = replace(
+                artifact,
+                execution_plan=execution_result.plan,
+                execution_signature=execution_result.signature,
+                execution_id=execution_result.execution_id,
+            )
+            self.stores.ledger.put_artifact(tx, updated_artifact)
+            artifact = updated_artifact
+        self._run_store.finalize(
+            run_id,
+            {
+                "execution_result": execution_result.to_primitive(),
+                "results": [r.vector_id for r in results],
+                "nd_decision_trace": (
+                    execution_result.nd_result.decision_trace
+                    if execution_result.nd_result is not None
+                    else None
+                ),
+            },
+        )
+        return {
+            "results": [r.vector_id for r in results],
+            "correlation_id": correlation_id,
+            "execution_contract": artifact.execution_contract.value,
+            "execution_contract_status": (
+                "stable"
+                if artifact.execution_contract is ExecutionContract.DETERMINISTIC
+                else "experimental"
+            ),
+            "replayable": artifact.replayable,
+            "execution_id": execution_result.execution_id,
+        }
 
     def explain(self, req: ExplainRequest) -> dict[str, Any]:
         art_id = req.artifact_id
