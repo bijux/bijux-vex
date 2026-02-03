@@ -59,6 +59,7 @@ nav:
       - Refusals: spec/refusals.md
       - Vocabulary: spec/vocabulary.md
       - Execution Contracts: spec/execution_contracts.md
+      - ND Profiles: spec/nd_profiles.md
       - Embedding Contract: spec/embeddings_contract.md
       - Execution Intent Matrix: spec/execution_intent_matrix.md
       - Failure Semantics: spec/failure_semantics.md
