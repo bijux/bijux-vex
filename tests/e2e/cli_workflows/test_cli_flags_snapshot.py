@@ -18,6 +18,8 @@ SNAPSHOT_PATH = Path(__file__).with_name("cli_flags_snapshot.json")
 def _normalize_default(value: Any) -> Any:
     if isinstance(value, tuple):
         return list(value)
+    if isinstance(value, Path):
+        return str(value)
     if callable(value):
         return getattr(value, "__name__", str(value))
     return value

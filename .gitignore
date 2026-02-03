@@ -25,3 +25,9 @@ coverage.xml
 
 .DS_Store
 site
+
+# Benchmarks
+benchmarks/artifacts/
+
+# Local runtime artifacts
+session.sqlite

@@ -38,12 +38,19 @@ api = [
   "uvicorn>=0.30.1,<1.0",
   "schemathesis>=4.0,<5.0",
 ]
+config = [
+  "PyYAML>=6.0,<7.0",
+]
 llm = [
 ]
 embeddings = [
   "sentence-transformers>=2.7.0,<3.0",
 ]
 vectorstores = [
+  "faiss-cpu>=1.7.4,<2.0",
+  "numpy>=1.26,<3.0",
+]
+vdb = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
 ]

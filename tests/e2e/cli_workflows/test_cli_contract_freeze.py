@@ -10,7 +10,10 @@ CLI_HELP = """
  Usage: python -m bijux_vex.boundaries.cli.app [OPTIONS] COMMAND [ARGS]...      
                                                                                 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --format        TEXT  Output format: json|table (default: json)              │
+│ --output        PATH  Write output to a file                                 │
+│ --config        PATH  Load configuration from a TOML/YAML file               │
+│ --help                Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ list-artifacts                                                               │
@@ -21,7 +24,9 @@ CLI_HELP = """
 │ explain                                                                      │
 │ replay                                                                       │
 │ compare                                                                      │
+│ bench                                                                        │
 │ vdb             Vector DB utilities                                          │
+│ config          Configuration utilities                                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 """
