@@ -284,7 +284,9 @@ def build_app() -> FastAPI:
                 )
             )
             result = engine.ingest(req)
-            response.headers["X-Correlation-Id"] = req.correlation_id or ""
+            response.headers["X-Correlation-Id"] = str(
+                result.get("correlation_id") or req.correlation_id or ""
+            )
             return result
         except BijuxError as exc:
             _raise_http_error(exc, req.correlation_id or correlation_id)
@@ -383,7 +385,7 @@ def build_app() -> FastAPI:
                             "execute": {
                                 "value": {
                                     "results": ["vec-1"],
-                                    "correlation_id": "req-1",
+                                    "correlation_id": "req-example",
                                     "execution_contract": "deterministic",
                                     "execution_contract_status": "stable",
                                     "replayable": True,

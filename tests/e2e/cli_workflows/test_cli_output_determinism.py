@@ -50,6 +50,8 @@ def test_cli_outputs_are_deterministic(tmp_path: Path, monkeypatch):
             "exact_validation",
             "--vector-store",
             "memory",
+            "--correlation-id",
+            "req-1",
         ],
         env=env,
     )
@@ -64,6 +66,8 @@ def test_cli_outputs_are_deterministic(tmp_path: Path, monkeypatch):
             "exact_validation",
             "--vector-store",
             "memory",
+            "--correlation-id",
+            "req-1",
         ],
         env=env,
     )

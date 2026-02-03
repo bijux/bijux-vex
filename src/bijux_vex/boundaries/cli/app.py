@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import sys
 from typing import no_type_check
+import uuid
 import zipfile
 
 import typer
@@ -117,10 +118,13 @@ def _render_table(data: object) -> str:
         header = " | ".join(keys)
         divider = " | ".join(["---"] * len(keys))
         lines = [header, divider]
-        for row in data:
-            lines.append(" | ".join(str(row.get(k, "")) for k in keys))
+        lines.extend(" | ".join(str(row.get(k, "")) for k in keys) for row in data)
         return "\n".join(lines)
     return str(data)
+
+
+def _resolve_correlation_id(raw: str | None) -> str:
+    return raw or f"req-{uuid.uuid4().hex}"
 
 
 def _emit(
@@ -371,6 +375,7 @@ def ingest(
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     try:
+        resolved_correlation_id = _resolve_correlation_id(correlation_id)
         base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
         req = IngestRequest(
             documents=[doc],
@@ -378,7 +383,7 @@ def ingest(
             embed_model=embed_model,
             embed_provider=embed_provider,
             cache_embeddings=cache_embeddings,
-            correlation_id=correlation_id,
+            correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
         )
@@ -627,6 +632,7 @@ def execute(
     explain: bool = typer.Option(False, "--explain"),
 ) -> None:
     try:
+        resolved_correlation_id = _resolve_correlation_id(correlation_id)
         vector_parsed = json.loads(vector) if vector else None
         contract = _parse_contract(execution_contract)
         intent = _parse_intent(execution_intent)
@@ -658,7 +664,7 @@ def execute(
                 max_memory_mb=max_memory_mb,
                 max_error=max_error,
             ),
-            correlation_id=correlation_id,
+            correlation_id=resolved_correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
         )
