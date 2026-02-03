@@ -10,9 +10,11 @@ bijux vex execute --artifact-id art-1 --vector "[0.3,0.4]" --top-k 1 \
 ```
 
 Expected:
+
 - ANN algorithm selected, randomness sources recorded
 - ApproximationReport persisted with recall/rank displacement
 - DeterminismReport present with reproducibility bounds
 
 Failure example:
+
 - Missing budget or randomness profile ⇒ invariant failure before execution.

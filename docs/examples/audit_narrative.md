@@ -12,6 +12,7 @@ request (contract + intent + budget)
 ```
 
 Key checkpoints:
+
 - Contract/intent validated up front; ND without ANN raises `NDExecutionUnavailableError`.
 - Plan immutability enforced before execution (fingerprint check).
 - Provenance persisted with approximation + randomness metadata.

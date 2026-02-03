@@ -13,6 +13,7 @@ It may be deterministic or non-deterministic, but it must always surface provena
 
 ## Provenance requirements
 Every embedding step must emit the following metadata (see provenance schema extension):
+
 - `embedding_source`
 - `embedding_determinism`
 - `embedding_seed`

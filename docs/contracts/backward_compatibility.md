@@ -5,6 +5,7 @@ If it is not listed here, it is not guaranteed.
 
 ## CLI commands guaranteed unchanged
 The following CLI commands (names + core semantics) are frozen from v0.1.x:
+
 - `list-artifacts`
 - `capabilities`
 - `ingest`
@@ -15,11 +16,13 @@ The following CLI commands (names + core semantics) are frozen from v0.1.x:
 - `compare`
 
 Notes:
+
 - Flag names and defaults are frozen via snapshot tests; any change requires an explicit test update.
 - Output fields are guaranteed as documented below.
 
 ## API routes guaranteed unchanged
 The following HTTP routes (paths + verbs) are frozen from v0.1.x:
+
 - `GET /capabilities`
 - `POST /create`
 - `POST /ingest`

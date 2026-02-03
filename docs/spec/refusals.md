@@ -8,6 +8,7 @@
 - Not a reasoning engine: vector execution only.
 
 Intentionally missing abstractions:
+
 - No schema migration helpers for embeddings
 - No plug-and-play ANN plugin registry beyond declared runners
 - No automatic fallback unless declared by the runner/plan

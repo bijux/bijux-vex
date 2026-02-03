@@ -8,6 +8,7 @@ Non-negotiable invariants:
 5) Ledger integrity: artifacts/results persisted with signatures; deletion/compaction must preserve chain hashes.
 
 Minimum modules to enforce:
+
 - `core/runtime/execution_plan.py` (plan fingerprint, randomness labels)
 - `core/runtime/execution_session.py` (state machine, contract alignment)
 - `core/contracts/execution_contract.py` + `core/contracts/determinism.py`

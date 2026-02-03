@@ -10,6 +10,7 @@
 - **AnnIndexBuildError / AnnQueryError / AnnBudgetError**: ANN backend failures are terminal for the request; no silent fallback to exact execution.
 
 Classification lives in `FailureKind` and `FAILURE_ACTIONS`:
+
 - retryable: transient backend or IO failures (not invariants).
 - terminal: invariants, ABI mismatches, capability refusals.
 - alert/escalate: backend divergence, provenance corruption.
@@ -33,6 +34,7 @@ Classification lives in `FailureKind` and `FAILURE_ACTIONS`:
 | Stable public errors | `ValidationError`, `InvariantError`, `ConflictError`, `NotFoundError`, `AuthzDeniedError`, `BackendDivergenceError`, `BackendCapabilityError`, `ReplayNotSupportedError`, `BudgetExceededError`, `AnnIndexBuildError`, `AnnQueryError`, `AnnBudgetError`, `NDExecutionUnavailableError` | | | |
 
 Docs → code
+
 - `src/bijux_vex/core/errors/error_types.py`
 - `src/bijux_vex/core/failures.py`
 - `src/bijux_vex/domain/provenance/replay.py`

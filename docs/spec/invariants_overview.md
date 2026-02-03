@@ -21,6 +21,7 @@ Replay/Compare
 ```
 
 Invariants fire at every arrow:
+
 - Contract/intent/budget required.
 - Session transitions guarded.
 - Plan fingerprint verified before execution.

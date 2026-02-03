@@ -1,6 +1,7 @@
 # Freeze criteria (v0.1.0)
 
 Freeze is allowed only when all gates are satisfied:
+
 - Core decomposition in place (contracts/runtime/policies/types/identity) with no file >300 LOC doing mixed responsibilities.
 - Services contain glue only; decision logic delegated to commands/domain.
 - Test tree mirrors src tree 1:1.

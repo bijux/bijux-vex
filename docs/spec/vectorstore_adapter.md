@@ -6,6 +6,7 @@ This is the explicit adapter surface for external vector stores. v0.2.0 includes
 Location: `src/bijux_vex/infra/adapters/vectorstore.py`
 
 Methods:
+
 - `connect()`
 - `insert(vectors, metadata)`
 - `query(vector, k, mode)`

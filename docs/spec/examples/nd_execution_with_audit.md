@@ -10,9 +10,11 @@ bijux vex execute --artifact-id art-1 --vector "[0.5,0.6]" --top-k 1 \
 ```
 
 Expected:
+
 - RandomnessProfile captured (seed, sources, bounded flag, budget).
 - DeterminismReport includes randomness sources and reproducibility bounds.
 - ApproximationReport shows recall and displacement; status may be PARTIAL if budgets trigger.
 
 Failure example:
+
 - Missing randomness profile or budget triggers invariant failure; execution does not start.

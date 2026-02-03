@@ -4,6 +4,7 @@ bijux-vex forbids silent behavior. Any decision that can change results, persist
 
 ## What counts as implicit behavior
 The following are **not allowed** without an explicit flag or field:
+
 - Choosing a deterministic vs non-deterministic execution contract.
 - Switching to approximate/ANN execution or falling back to exact execution.
 - Persisting vectors or artifacts to any external store.
@@ -13,6 +14,7 @@ The following are **not allowed** without an explicit flag or field:
 
 ## What is allowed only via explicit flags or fields
 The following behaviors must be **opt-in**, never default:
+
 - Vector store selection (e.g., `--vector-store <name>`).
 - ANN execution (must declare contract, intent, mode, randomness profile, and budgets).
 - Persistence outside the local execution ledger.

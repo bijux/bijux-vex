@@ -8,6 +8,7 @@
 | PRODUCTION_RETRIEVAL  | deterministic             | strict                   |
 
 Rules:
+
 - Intent is always explicit and coerced to `ExecutionIntent` at boundary ingress.
 - Non-deterministic intents require an execution budget and randomness profile.
 - Deterministic intents must use strict mode; ND intents must not use strict mode.

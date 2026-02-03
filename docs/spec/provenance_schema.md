@@ -4,6 +4,7 @@ Provenance is the audit surface for execution results. The schema is **additive*
 
 ## New fields (v0.2.0)
 The provenance output may include:
+
 - `embedding_source`
 - `embedding_determinism`
 - `embedding_seed`
