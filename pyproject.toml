@@ -49,6 +49,9 @@ embeddings = [
 nd-hnsw = [
   "hnswlib>=0.8.0,<1.0",
 ]
+nd = [
+  "hnswlib>=0.8.0,<1.0",
+]
 vectorstores = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
