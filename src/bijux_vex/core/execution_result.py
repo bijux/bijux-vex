@@ -87,6 +87,7 @@ class ExecutionResult:
     results: tuple[Result, ...]
     cost: ExecutionCost
     approximation: ApproximationReport | None = None
+    nd_result: "NDResultSchema | None" = None
     status: ExecutionStatus = ExecutionStatus.SUCCESS
     failure_reason: str | None = None
     randomness_sources: tuple[str, ...] = ()
@@ -116,9 +117,32 @@ class ExecutionResult:
 
 
 __all__ = [
+    "NDDecisionTrace",
+    "NDResultSchema",
     "ExecutionResult",
     "ExecutionCost",
     "ApproximationReport",
     "ExecutionStatus",
     "WitnessReport",
 ]
+
+
+@dataclass(frozen=True)
+class NDDecisionTrace:
+    runner: str
+    params: tuple[tuple[str, object], ...]
+    budget: tuple[tuple[str, object], ...]
+    refusal: str | None = None
+    degradation: str | None = None
+    notes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class NDResultSchema:
+    results: tuple[Result, ...]
+    quality: ApproximationReport | None
+    quality_reason: str | None
+    confidence_label: str | None
+    reproducibility_bounds: str
+    refusal: str | None
+    decision_trace: NDDecisionTrace | None

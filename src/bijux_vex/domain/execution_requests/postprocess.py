@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from bijux_vex.core.contracts.ann_metadata import derive_metadata
 from bijux_vex.core.contracts.determinism import DeterminismReport
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import InvariantError
@@ -13,6 +12,8 @@ from bijux_vex.core.execution_result import (
     ExecutionCost,
     ExecutionResult,
     ExecutionStatus,
+    NDDecisionTrace,
+    NDResultSchema,
     WitnessReport,
 )
 from bijux_vex.core.runtime.execution_session import ExecutionSession
@@ -26,6 +27,7 @@ from bijux_vex.domain.execution_requests.nd_quality import (
     compute_similarity_entropy,
     stability_signature,
 )
+from bijux_vex.domain.nd.randomness import enforce_randomness_contract
 
 
 def randomness_audit(
@@ -60,12 +62,7 @@ def guard_nd_randomness(
         raise InvariantError(
             message="Non-deterministic execution missing randomness audit data"
         )
-    if approximation is None:
-        raise InvariantError(
-            message="Non-deterministic execution missing approximation report"
-        )
-    # derive_metadata validates presence of required ANN metadata surface
-    derive_metadata(approximation)
+    enforce_randomness_contract(session, approximation is not None)
 
 
 def apply_budget_results(
@@ -96,6 +93,7 @@ def build_execution_result(
     randomness_envelopes: tuple[tuple[str, float], ...],
     witness_report: WitnessReport | None = None,
     witness_results: tuple[Result, ...] | None = None,
+    decision_trace: NDDecisionTrace | None = None,
 ) -> ExecutionResult:
     signature = execution_signature(
         plan=session.plan,
@@ -193,6 +191,7 @@ def build_execution_result(
         results=tuple(results_buffer),
         cost=cost,
         approximation=approximation,
+        nd_result=None,
         status=status,
         failure_reason=failure_reason,
         randomness_sources=randomness_sources,
@@ -201,10 +200,25 @@ def build_execution_result(
         determinism_report=determinism_report,
     )
     if session.request.execution_contract is ExecutionContract.NON_DETERMINISTIC:
+        quality_reason = None
         if execution_result.approximation is None:
-            raise InvariantError(
-                message="Non-deterministic execution missing approximation report"
-            )
+            quality_reason = "quality_not_measured"
+        nd_quality = execution_result.approximation
+        nd_confidence = None
+        if nd_quality is not None:
+            nd_confidence = nd_quality.confidence_label
+        execution_result = replace(
+            execution_result,
+            nd_result=NDResultSchema(
+                results=execution_result.results,
+                quality=nd_quality,
+                quality_reason=quality_reason,
+                confidence_label=nd_confidence,
+                reproducibility_bounds=str(session.plan.reproducibility_bounds),
+                refusal=failure_reason,
+                decision_trace=decision_trace,
+            ),
+        )
     else:
         if execution_result.approximation is not None:
             raise InvariantError(
