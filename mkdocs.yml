@@ -46,16 +46,24 @@ nav:
       - Refusals: spec/refusals.md
       - Vocabulary: spec/vocabulary.md
       - Execution Contracts: spec/execution_contracts.md
+      - Embedding Contract: spec/embeddings_contract.md
       - Execution Intent Matrix: spec/execution_intent_matrix.md
       - Failure Semantics: spec/failure_semantics.md
+      - Determinism Matrix: spec/determinism_matrix.md
       - Non-Deterministic Execution: spec/non_deterministic_execution.md
+      - ANN Graduation Criteria: spec/ann_graduation_criteria.md
       - Invariant IDs: spec/invariant_ids.md
       - Execution Lifecycle: spec/execution_lifecycle.md
       - Execution Artifacts: spec/execution_artifacts.md
+      - Provenance Schema: spec/provenance_schema.md
+      - VectorStore Adapter: spec/vectorstore_adapter.md
       - Invariants Overview: spec/invariants_overview.md
       - Doc-to-Code Map: spec/doc_to_code_map.md
       - Irreducible Core: spec/irreducible_core.md
       - Architecture Diagram: spec/architecture_diagram.md
+  - Contracts:
+      - Backward Compatibility: contracts/backward_compatibility.md
+      - Implicitness: contracts/implicitness.md
   - Design:
       - Scope: design/scope.md
       - Non-Goals: design/non_goals.md
@@ -64,6 +72,7 @@ nav:
       - Contracts: design/contracts.md
       - Execution Contracts (Design): design/execution_contracts.md
       - Why Vector Execution: design/why_vector_execution.md
+      - Vector Store Opt-In: design/vector_store_opt_in.md
       - VDB Comparison: design/vdb_comparison.md
       - VDB Profile: spec/vdb_profile.md
       - Rejected Alternatives: design/rejected_alternatives.md
@@ -91,6 +100,7 @@ nav:
       - Release Process: maintainer/release_process.md
       - Release Checklist: maintainer/release_checklist.md
       - Release Dry Run: maintainer/release_dry_run.md
+      - v0.2.0 Checklist: maintainer/v0_2_0_progress_checklist.md
       - Docs Freeze Checklist: maintainer/docs_freeze_checklist.md
       - Design Diary: maintainer/design_diary.md
       - Makefile Contract: maintainer/makefile_contract.md
@@ -100,6 +110,7 @@ nav:
       - Deletion Policy: maintainer/deletion_policy.md
       - Extension Points: maintainer/extension_points.md
       - Extension Policy: maintainer/extension_policy.md
+      - ANN Runner Audit: maintainer/ann_runner_audit.md
       - Security Model: maintainer/security_model.md
       - Do Not Optimize: maintainer/do_not_optimize.md
       - If I Disappear: maintainer/if_i_disappear.md
