@@ -1,7 +1,7 @@
 # Deterministic replay example
 
 ```bash
-bijux vex replay --artifact art-1 --contract deterministic
+bijux vex replay --request-text "hello"
 ```
 
 Expected:

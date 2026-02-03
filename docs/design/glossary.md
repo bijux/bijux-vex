@@ -12,6 +12,6 @@
 - **Determinism**: Contract where replay MUST be bit-identical; hidden randomness forbidden.
 - **Non-determinism**: Contract where randomness MUST be declared; replay checks envelopes, not equality.
 - **Replay**: Re-running the same plan under the same contract; deterministic ⇒ equality, ND ⇒ bounded envelope. Replayable means re-execution is possible, not that results are cached.
-- **Stability**: Deterministic surfaces are frozen; ND/ANN is stable at the contract level but outcomes vary within declared bounds.
+- **Stability**: Deterministic surfaces are frozen; ND/ANN is stable at the contract level but **experimental** in behavior (outcomes vary within declared bounds).
 - **Reproducibility**: Ability to obtain the same execution behavior under the same plan/contract/randomness; stronger than “similar results.”
 - **Determinism vs reproducibility**: determinism demands identical outputs; ND reproducibility means divergence stays within the recorded approximation envelope.

@@ -5,6 +5,7 @@ bijux-vex is a **vector execution engine**. The following requirements are norma
 - The system **MUST** treat vector execution as the core unit; storage is supporting only.
 - Deterministic executions **MUST** be bit-stable and **MUST NOT** contain hidden randomness.
 - Non-deterministic executions **MUST** declare randomness sources, budgets, and reproducibility bounds; replay **MUST** verify within those bounds.
+- Non-deterministic/ANN behavior is **experimental** until ANN graduation criteria are met.
 - Replay **MUST** mean re-running the same plan under the same contract; deterministic replay **MUST** match exactly, ND replay **MUST** stay within declared envelopes.
 - Backends **MUST** refuse contracts they cannot honor.
 - Absence of an ANN backend is a valid state; ND requests MAY fail with a contractual capability error (`NDExecutionUnavailableError`).

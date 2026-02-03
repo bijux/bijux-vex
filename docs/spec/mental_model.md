@@ -11,7 +11,7 @@ This file is the single-page spine for bijux-vex v0.1.0. Read this before any ot
 ## What is guaranteed
 
 - If `ExecutionContract == DETERMINISTIC`, replay under the same signature MUST produce bit-identical results and matching `results_fingerprint`.
-- If `ExecutionContract == NON_DETERMINISTIC`, replay MUST stay within declared `reproducibility_bounds` and emit a `DeterminismReport` describing randomness sources and bounds.
+- If `ExecutionContract == NON_DETERMINISTIC` (experimental), replay MUST stay within declared `reproducibility_bounds` and emit a `DeterminismReport` describing randomness sources and bounds.
 - Provenance is mandatory: replay is only legal when a stored `ExecutionResult` exists for the artifact.
 - Budgets are enforced pre- and mid-plan; overruns result in `PARTIAL` status with `BudgetExceededError` provenance.
 

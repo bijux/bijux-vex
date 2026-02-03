@@ -9,7 +9,7 @@ bijux-vex is a **vector execution engine**. It **MUST** run vector computations 
 
 ## Deterministic vs non-deterministic contracts
 - Deterministic: bit-stable, replay **MUST** match exactly, no hidden randomness **MAY** exist.
-- Non-deterministic: randomness **MUST** be declared, bounded, and audited; replay **MUST** check distributional consistency within declared bounds.
+- Non-deterministic (experimental): randomness **MUST** be declared, bounded, and audited; replay **MUST** check distributional consistency within declared bounds.
 
 ## Why ANN is treated as execution (not indexing)
 - ANN choices (graph walks, sampling, pruning) **MUST** be treated as execution-time decisions.

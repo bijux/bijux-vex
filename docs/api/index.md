@@ -13,7 +13,8 @@ The API is versioned and contract-driven. This page is descriptive; the canonica
 
 ## How to use
 - Consult `api/v1/schema.yaml` to generate clients or validate requests/responses.
-- Use the CLI verbs as a mirror: create → ingest → materialize → execute → explain → replay → compare.
+- CLI mirror: ingest → materialize → execute → explain → replay → compare.
+- API endpoints: `/ingest` → `/artifact` → `/execute` → `/explain` → `/replay` (no `/compare` endpoint in v1).
 - For non-deterministic executions, supply execution budgets and randomness profiles as required by the schema.
 
 ## References

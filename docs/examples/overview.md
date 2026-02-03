@@ -4,7 +4,7 @@ Use these scenarios to learn the system quickly. Follow them in order.
 
 1) **Exact execution**: `spec/examples/exact_execution.md`
    - Run a deterministic query, inspect replayable artifacts.
-2) **ANN execution**: `spec/examples/ann_execution.md`
+2) **ANN execution (experimental)**: `spec/examples/ann_execution.md`
    - Run a non-deterministic query with an ANN runner, see approximation reports.
 3) **Deterministic replay**: `spec/examples/deterministic_replay.md`
    - Prove deterministic outputs match across runs.

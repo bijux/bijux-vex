@@ -1,10 +1,10 @@
 # Exact execution example
 
 ```bash
-bijux vex create
-bijux vex ingest --text "hello"
-bijux vex materialize --metric l2
-bijux vex execute --contract deterministic --vector "[0.1,0.2]"
+bijux vex ingest --doc "hello" --vector "[0.1,0.2]"
+bijux vex materialize --execution-contract deterministic
+bijux vex execute --artifact-id art-1 --vector "[0.1,0.2]" --top-k 1 \
+  --execution-contract deterministic --execution-intent exact_validation --execution-mode strict
 ```
 
 Expected:

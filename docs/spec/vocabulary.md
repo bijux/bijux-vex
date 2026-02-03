@@ -9,5 +9,5 @@
 - Replay: re-running an execution with the same contract/ABI; deterministic checks equality, ND checks envelope. Replayable does **not** mean cached; it means re-execution is possible under the same contract.
 - Comparison: structured diff between executions (overlap, recall delta, rank instability), exact vs approximate.
 - Execution fidelity: mode expressing how close results adhere to exact semantics (deterministic exact vs ND approximate).
-- Stability: deterministic surfaces are frozen; ND/ANN is **stable_bounded** (contract is stable, outcomes vary within declared envelopes).
+- Stability: deterministic surfaces are frozen; ND/ANN is **stable_bounded** at the contract level but **experimental** in behavior (outcomes vary within declared envelopes).
 - Reproducibility: ability to recreate execution behavior under the same contract/plan/randomness (deterministic ⇒ equality, ND ⇒ bounded envelope).

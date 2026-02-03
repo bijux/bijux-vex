@@ -10,7 +10,7 @@ bijux-vex supports two explicit execution contracts. There is no default: caller
 ## Non-deterministic (ANN)
 - Uses declared approximate runners; results may differ across runs even with identical inputs.
 - Replay is allowed but must declare divergence via `nondeterministic_sources`, `lossy_dimensions`, and replay details.
-- Treated as an operational escape hatch, not the primary mode. Deterministic and non-deterministic contracts cannot mix on the same artifact ID.
+- Treated as an operational escape hatch, not the primary mode; **experimental** until ANN graduation criteria are met. Deterministic and non-deterministic contracts cannot mix on the same artifact ID.
 
 ## Positioning
 - Deterministic mode is the first-class experience and the baseline for conformance.

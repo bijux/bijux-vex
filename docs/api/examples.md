@@ -12,7 +12,7 @@ These payloads are normative; changing them is a breaking API change.
 }
 ```
 
-## Execute (non_deterministic, ANN)
+## Execute (non_deterministic, ANN, experimental)
 ```json
 {
   "vector": [0.0, 1.0],
@@ -20,15 +20,7 @@ These payloads are normative; changing them is a breaking API change.
   "execution_contract": "non_deterministic",
   "execution_intent": "exploratory_search",
   "execution_mode": "bounded",
-  "execution_budget": { "max_ann_probes": 10, "max_error": 0.2 },
-  "randomness_profile": { "seed": 1, "sources": ["ann_graph"] }
-}
-```
-
-## Compare
-```json
-{
-  "artifact_id": "exact",
-  "other_artifact_id": "ann"
+  "execution_budget": { "max_latency_ms": 10, "max_memory_mb": 10, "max_error": 0.2 },
+  "randomness_profile": { "seed": 1, "sources": ["reference_ann_hnsw"], "bounded": true }
 }
 ```

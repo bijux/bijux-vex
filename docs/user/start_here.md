@@ -12,6 +12,11 @@ Vector execution often hides determinism assumptions. bijux-vex makes execution 
 - Deterministic: exact search, bit-stable, replay required. No hidden randomness.
 - Non-deterministic (ANN, experimental): approximate path only, bounded divergence, emits `ApproximationReport` + `RandomnessProfile`, replay is envelope-based.
 
+## Start here path (canonical)
+1) CLI flow: `ingest` → `materialize` → `execute` → `replay` → `compare`.
+2) Concepts: [overview/concepts.md](../overview/concepts.md).
+3) Example walkthrough: [examples/overview.md](../examples/overview.md).
+
 ## What to read next
 1) Concepts: [overview/concepts.md](../overview/concepts.md) — mental model of execution vs storage.
 2) Contracts: [spec/system_contract.md](../spec/system_contract.md) and [spec/execution_contracts.md](../spec/execution_contracts.md).

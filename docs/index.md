@@ -40,14 +40,17 @@ Read `docs/user/start_here.md`. It explains the problem, when to use bijux-vex, 
 
 ## Minimal example (CLI, 10 lines)
 ```sh
-bijux vex create --name demo
-bijux vex ingest --documents doc.txt --vectors [[0,1,0]]
-bijux vex artifact --artifact-id exact --contract deterministic
-bijux vex execute --artifact-id exact --vector [0,1,0] --top-k 1 --contract deterministic
-bijux vex artifact --artifact-id ann --contract non_deterministic
-bijux vex execute --artifact-id ann --vector [0,1,0] --top-k 1 --contract non_deterministic --randomness-profile seed=1
-bijux vex explain --artifact-id exact --result-id <vector_id>
-bijux vex compare --artifact-id exact --other-id ann
+bijux vex ingest --doc "hello" --vector "[0,1,0]"
+bijux vex materialize --execution-contract deterministic
+bijux vex execute --artifact-id art-1 --vector "[0,1,0]" --top-k 1 \
+  --execution-contract deterministic --execution-intent exact_validation --execution-mode strict
+bijux vex replay --request-text "hello"
+bijux vex materialize --execution-contract non_deterministic
+bijux vex execute --artifact-id art-1 --vector "[0,1,0]" --top-k 1 \
+  --execution-contract non_deterministic --execution-intent exploratory_search --execution-mode bounded \
+  --randomness-seed 1 --randomness-sources reference_ann_hnsw --randomness-bounded \
+  --max-latency-ms 10 --max-memory-mb 10 --max-error 0.5
+bijux vex compare --vector "[0,1,0]" --execution-intent exact_validation
 ```
 
 ## Execution truth table (canonical)

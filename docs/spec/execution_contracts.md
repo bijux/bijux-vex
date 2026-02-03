@@ -7,7 +7,7 @@
 - Backends MUST declare `deterministic_query=True` and MUST refuse if they cannot meet it.
 
 ## Non-deterministic execution
-- Fully supported in v0.1.x; refusal must be contractual and explicit.
+- Contract is stable; behavior remains **experimental** until ANN graduation criteria are met.
 - REQUIRES:
   - `RandomnessProfile` (seed, sources, boundedness, budget)
   - `DeterminismReport` persisted with every result

@@ -17,22 +17,23 @@ Vector execution engine with explicit determinism contracts. Deterministic paths
 - Not a vector DB or storage layer.
 - Not an embedding or RAG framework.
 - Not a serving platform with SLAs.
+- VDB integration is explicit only; no silent persistence.
 
 ## Quick links
-- Start here (single onboarding path): [user/start_here.md](user/start_here.md)
+- Start here (single onboarding path): [docs/user/start_here.md](docs/user/start_here.md)
 - Docs home: https://bijux.github.io/bijux-vex/
-- Concepts: [overview/concepts.md](overview/concepts.md)
-- API: [api/index.md](api/index.md) and [`api/v1/schema.yaml`](https://github.com/bijux/bijux-vex/blob/main/api/v1/schema.yaml) (canonical contract)
-- Examples: [examples/overview.md](examples/overview.md)
-- Changelog: [changelog.md](changelog.md)
-- Not a vector DB: [user/not_a_vdb.md](user/not_a_vdb.md)
+- Concepts: [docs/overview/concepts.md](docs/overview/concepts.md)
+- API: [docs/api/index.md](docs/api/index.md) and [`api/v1/schema.yaml`](https://github.com/bijux/bijux-vex/blob/main/api/v1/schema.yaml) (canonical contract)
+- Examples: [docs/examples/overview.md](docs/examples/overview.md)
+- Changelog: [docs/changelog.md](docs/changelog.md)
+- Not a vector DB: [docs/user/not_a_vdb.md](docs/user/not_a_vdb.md)
 
 ## Reading order (guaranteed)
-1) Start with [user/start_here.md](user/start_here.md) for the problem, fit, and next steps.  
-2) Then [overview/concepts.md](overview/concepts.md) for execution vs storage and determinism vs non-determinism.  
-3) Then [spec/system_contract.md](spec/system_contract.md) and [spec/execution_contracts.md](spec/execution_contracts.md) for the normative rules.  
-4) Run [examples/overview.md](examples/overview.md) for deterministic and ANN flows.  
-5) Consult [api/index.md](api/index.md) and [`api/v1/schema.yaml`](https://github.com/bijux/bijux-vex/blob/main/api/v1/schema.yaml) when integrating.  
+1) Start with [docs/user/start_here.md](docs/user/start_here.md) for the problem, fit, and next steps.  
+2) Then [docs/overview/concepts.md](docs/overview/concepts.md) for execution vs storage and determinism vs non-determinism.  
+3) Then [docs/spec/system_contract.md](docs/spec/system_contract.md) and [docs/spec/execution_contracts.md](docs/spec/execution_contracts.md) for the normative rules.  
+4) Run [docs/examples/overview.md](docs/examples/overview.md) for deterministic and ANN flows.  
+5) Consult [docs/api/index.md](docs/api/index.md) and [`api/v1/schema.yaml`](https://github.com/bijux/bijux-vex/blob/main/api/v1/schema.yaml) when integrating.  
 Everything else is reference or maintainer material.
 
 ## Start here
@@ -40,14 +41,17 @@ Read `docs/user/start_here.md`. It explains the problem, when to use bijux-vex, 
 
 ## Minimal example (CLI, 10 lines)
 ```sh
-bijux vex create --name demo
-bijux vex ingest --documents doc.txt --vectors [[0,1,0]]
-bijux vex artifact --artifact-id exact --contract deterministic
-bijux vex execute --artifact-id exact --vector [0,1,0] --top-k 1 --contract deterministic
-bijux vex artifact --artifact-id ann --contract non_deterministic
-bijux vex execute --artifact-id ann --vector [0,1,0] --top-k 1 --contract non_deterministic --randomness-profile seed=1
-bijux vex explain --artifact-id exact --result-id <vector_id>
-bijux vex compare --artifact-id exact --other-id ann
+bijux vex ingest --doc "hello" --vector "[0,1,0]"
+bijux vex materialize --execution-contract deterministic
+bijux vex execute --artifact-id art-1 --vector "[0,1,0]" --top-k 1 \
+  --execution-contract deterministic --execution-intent exact_validation --execution-mode strict
+bijux vex replay --request-text "hello"
+bijux vex materialize --execution-contract non_deterministic
+bijux vex execute --artifact-id art-1 --vector "[0,1,0]" --top-k 1 \
+  --execution-contract non_deterministic --execution-intent exploratory_search --execution-mode bounded \
+  --randomness-seed 1 --randomness-sources reference_ann_hnsw --randomness-bounded \
+  --max-latency-ms 10 --max-memory-mb 10 --max-error 0.5
+bijux vex compare --vector "[0,1,0]" --execution-intent exact_validation
 ```
 
 ## Execution truth table (canonical)
@@ -69,7 +73,7 @@ bijux vex compare --artifact-id exact --other-id ann
 We use one term per concept: **replayable** (deterministic, bit-identical), **audited** (non-deterministic with envelopes), **stable** (supported and frozen), **outcome-variable** (bounded divergence). Avoid “reproducible” or “supported” as stand-ins.
 
 ## Public surfaces
-- **CLI (Typer)**: `create`, `ingest`, `materialize`, `execute`, `explain`, `replay`, `compare`, `list-artifacts`.
+- **CLI (Typer)**: `list-artifacts`, `capabilities`, `ingest`, `materialize`, `execute`, `explain`, `replay`, `compare`.
 - **API (FastAPI)**: versioned under `bijux_vex.api.v1` with frozen OpenAPI (`api/v1/openapi.v1.json`), endpoints mirror CLI verbs.
 - **Core types**: `ExecutionContract`, `ExecutionRequest`, `ExecutionArtifact`, `ExecutionResources`, `ApproximationReport`, `RandomnessProfile`.
 

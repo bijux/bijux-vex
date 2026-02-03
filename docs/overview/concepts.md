@@ -6,7 +6,7 @@ This page is descriptive, not normative. It explains bijux-vex in plain language
 - A vector execution engine: it runs vector similarity computations under explicit contracts.
 - Contracts come in two flavors:
   - **Deterministic**: exact algorithms, replayable outputs, bit-stable provenance.
-  - **Non-deterministic**: ANN/approximate algorithms, bounded divergence, declared randomness.
+  - **Non-deterministic (experimental)**: ANN/approximate algorithms, bounded divergence, declared randomness.
 - Every run is tied to an execution plan, provenance, and artifacts that record how results were produced.
 
 ## Vector execution vs. vector DB

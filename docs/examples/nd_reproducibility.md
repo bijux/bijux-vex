@@ -1,23 +1,23 @@
 # Non-deterministic reproducibility experiment
 
 This walkthrough shows what changes and what stays bounded when running the same ND execution repeatedly.
+ND behavior is **experimental**; use this to observe and audit variance.
 
 ## Setup
 
 ```bash
-bijux vex create --name repro
-bijux vex ingest --name repro --documents "hi" --vectors "[[0.0, 0.0]]"
-bijux vex materialize --name repro --contract non_deterministic --budget-latency 5 --budget-memory 5 --budget-error 0.2
+bijux vex ingest --doc "hi" --vector "[0.0, 0.0]"
+bijux vex materialize --execution-contract non_deterministic
 ```
 
 ## Run the same ND execution 3 times
 
 ```bash
 for i in 1 2 3; do
-  bijux vex execute --name repro --vector "[0.0,0.0]" --top-k 1 \
-    --contract non_deterministic --mode bounded \
-    --budget-latency 5 --budget-memory 5 --budget-error 0.2 \
-    --randomness-seed $i
+  bijux vex execute --artifact-id art-1 --vector "[0.0,0.0]" --top-k 1 \
+    --execution-contract non_deterministic --execution-intent exploratory_search --execution-mode bounded \
+    --randomness-seed $i --randomness-sources reference_ann_hnsw --randomness-bounded \
+    --max-latency-ms 5 --max-memory-mb 5 --max-error 0.2
 done
 ```
 

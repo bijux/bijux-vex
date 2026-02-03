@@ -1,6 +1,6 @@
 # Non-deterministic execution (ND) semantics
 
-ND execution is **first-class** and fully supported in v0.1.x. It is not a best-effort mode.
+ND execution is **first-class** at the contract level but remains **experimental** in behavior in v0.2.x. It is not a best-effort mode.
 
 - Inputs and parameters **must be deterministic** (explicit seeds, declared randomness sources).
 - Allowed divergence: ranking/score differences within declared approximation bounds; provenance must record randomness sources.
