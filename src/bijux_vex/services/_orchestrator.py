@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import replace
 import os
 from pathlib import Path
+import threading
 from typing import Any, cast
+import uuid
 
 from bijux_vex.boundaries.pydantic_edges.models import (
     CreateRequest,
@@ -20,6 +22,7 @@ from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
     AuthzDeniedError,
+    BudgetExceededError,
     InvariantError,
     NotFoundError,
     ValidationError,
@@ -60,6 +63,7 @@ from bijux_vex.infra.embeddings.cache import (
 from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
 from bijux_vex.infra.logging import log_event
 from bijux_vex.infra.metrics import METRICS, timed
+from bijux_vex.infra.run_store import RunStore
 from bijux_vex.infra.runners.registry import RUNNERS
 from bijux_vex.services.policies.id_policy import (
     ContentAddressedIdPolicy,
@@ -130,6 +134,9 @@ class Orchestrator:
         self.default_artifact_id = self.id_policy.next_artifact_id()
         self._latest_corpus_fingerprint: str | None = None
         self._latest_vector_fingerprint: str | None = None
+        self._run_store = RunStore()
+        self._idempotency_lock = threading.Lock()
+        self._idempotency_cache: dict[str, dict[str, Any]] = {}
 
     def _tx(self) -> Tx:
         return cast(Tx, self.backend.tx_factory())
@@ -171,9 +178,15 @@ class Orchestrator:
         items = tuple((k, v) for k, v in meta.items() if v is not None)
         return items or None
 
-    def list_artifacts(self) -> dict[str, Any]:
-        artifacts = tuple(self.stores.ledger.list_artifacts())
-        return {"artifacts": [a.artifact_id for a in artifacts]}
+    def list_artifacts(
+        self, *, limit: int | None = None, offset: int = 0
+    ) -> dict[str, Any]:
+        artifacts = [a.artifact_id for a in self.stores.ledger.list_artifacts()]
+        if offset:
+            artifacts = artifacts[offset:]
+        if limit is not None:
+            artifacts = artifacts[:limit]
+        return {"artifacts": artifacts}
 
     def capabilities(self) -> dict[str, Any]:
         caps = getattr(self.stores, "capabilities", None)
@@ -269,6 +282,18 @@ class Orchestrator:
 
     def ingest(self, req: IngestRequest) -> dict[str, Any]:
         self._guard_mutation("ingest")
+        limits = self.config.resource_limits
+        if (
+            limits
+            and limits.max_vectors_per_ingest is not None
+            and len(req.documents) > int(limits.max_vectors_per_ingest)
+        ):
+            raise ValidationError(message="ingest exceeds max_vectors_per_ingest limit")
+        if req.idempotency_key:
+            with self._idempotency_lock:
+                cached = self._idempotency_cache.get(req.idempotency_key)
+                if cached is not None:
+                    return dict(cached)
         correlation_id = req.correlation_id or "req-1"
         log_event(
             "ingest_start", correlation_id=correlation_id, count=len(req.documents)
@@ -413,7 +438,11 @@ class Orchestrator:
         log_event("ingest_end", correlation_id=correlation_id, elapsed_ms=elapsed())
         self._latest_corpus_fingerprint = corpus_fingerprint(req.documents)
         self._latest_vector_fingerprint = vectors_fingerprint(vectors)
-        return {"ingested": len(req.documents)}
+        result = {"ingested": len(req.documents)}
+        if req.idempotency_key:
+            with self._idempotency_lock:
+                self._idempotency_cache[req.idempotency_key] = dict(result)
+        return result
 
     def materialize(self, req: ExecutionArtifactRequest) -> dict[str, Any]:
         self._guard_mutation("materialize")
@@ -491,7 +520,18 @@ class Orchestrator:
     def execute(self, req: ExecutionRequestPayload) -> dict[str, Any]:
         if req.vector is None:
             raise ValidationError(message="execution vector required")
+        limits = self.config.resource_limits
+        if limits and limits.max_k is not None and req.top_k > int(limits.max_k):
+            raise ValidationError(message="top_k exceeds max_k limit")
+        if (
+            limits
+            and limits.max_query_size is not None
+            and req.request_text
+            and len(req.request_text) > int(limits.max_query_size)
+        ):
+            raise ValidationError(message="request_text exceeds max_query_size limit")
         correlation_id = req.correlation_id or "req-1"
+        run_id = f"{correlation_id}-{uuid.uuid4().hex}"
         artifact_id = req.artifact_id
         if artifact_id is None:
             available = tuple(self.stores.ledger.list_artifacts())
@@ -557,36 +597,75 @@ class Orchestrator:
             randomness=randomness_profile,
             ann_runner=getattr(self.backend, "ann", None),
         )
-        log_event("query_start", correlation_id=correlation_id, top_k=req.top_k)
-        with timed("query_latency_ms") as elapsed:
-            execution_result, results = execute_request(
-                session,
-                self.stores,
-                ann_runner=getattr(self.backend, "ann", None),
-            )
-        log_event("query_end", correlation_id=correlation_id, elapsed_ms=elapsed())
-        with self._tx() as tx:
-            self.stores.ledger.put_execution_result(tx, execution_result)
-            updated_artifact = replace(
-                artifact,
-                execution_plan=execution_result.plan,
-                execution_signature=execution_result.signature,
-                execution_id=execution_result.execution_id,
-            )
-            self.stores.ledger.put_artifact(tx, updated_artifact)
-            artifact = updated_artifact
-        return {
-            "results": [r.vector_id for r in results],
-            "correlation_id": correlation_id,
-            "execution_contract": artifact.execution_contract.value,
-            "execution_contract_status": (
-                "stable"
-                if artifact.execution_contract is ExecutionContract.DETERMINISTIC
-                else "experimental"
-            ),
-            "replayable": artifact.replayable,
-            "execution_id": execution_result.execution_id,
+        run_metadata = {
+            "execution_id": correlation_id,
+            "artifact_id": artifact.artifact_id,
+            "request": {
+                "request_text": req.request_text,
+                "vector_dim": len(req.vector),
+                "top_k": req.top_k,
+                "execution_contract": req.execution_contract.value,
+                "execution_intent": req.execution_intent.value,
+                "execution_mode": req.execution_mode.value,
+            },
+            "backend": getattr(self.backend, "name", "unknown"),
+            "vector_store": {
+                "backend": self.vector_store_resolution.descriptor.name,
+                "uri_redacted": self.vector_store_resolution.uri_redacted,
+                "supports_exact": self.vector_store_resolution.descriptor.supports_exact,
+                "supports_ann": self.vector_store_resolution.descriptor.supports_ann,
+            },
         }
+        self._run_store.start(run_id, run_metadata)
+        log_event("query_start", correlation_id=correlation_id, top_k=req.top_k)
+        try:
+            with timed("query_latency_ms") as elapsed:
+                execution_result, results = execute_request(
+                    session,
+                    self.stores,
+                    ann_runner=getattr(self.backend, "ann", None),
+                )
+            log_event("query_end", correlation_id=correlation_id, elapsed_ms=elapsed())
+            if (
+                limits
+                and limits.max_execution_time_ms is not None
+                and elapsed() > float(limits.max_execution_time_ms)
+            ):
+                raise BudgetExceededError(
+                    message="Execution exceeded max_execution_time_ms limit"
+                )
+            with self._tx() as tx:
+                self.stores.ledger.put_execution_result(tx, execution_result)
+                updated_artifact = replace(
+                    artifact,
+                    execution_plan=execution_result.plan,
+                    execution_signature=execution_result.signature,
+                    execution_id=execution_result.execution_id,
+                )
+                self.stores.ledger.put_artifact(tx, updated_artifact)
+                artifact = updated_artifact
+            self._run_store.finalize(
+                run_id,
+                {
+                    "execution_result": execution_result.to_primitive(),
+                    "results": [r.vector_id for r in results],
+                },
+            )
+            return {
+                "results": [r.vector_id for r in results],
+                "correlation_id": correlation_id,
+                "execution_contract": artifact.execution_contract.value,
+                "execution_contract_status": (
+                    "stable"
+                    if artifact.execution_contract is ExecutionContract.DETERMINISTIC
+                    else "experimental"
+                ),
+                "replayable": artifact.replayable,
+                "execution_id": execution_result.execution_id,
+            }
+        except Exception as exc:
+            self._run_store.mark_failed(run_id, str(exc))
+            raise
 
     def explain(self, req: ExplainRequest) -> dict[str, Any]:
         art_id = req.artifact_id
@@ -597,31 +676,12 @@ class Orchestrator:
             else:
                 raise ValidationError(message="artifact_id required to explain result")
         artifact = self._require_artifact(art_id)
-        request = ExecutionRequest(
-            request_id="req-1",
-            text=None,
-            vector=(0.0, 0.0),
-            top_k=10,
-            execution_contract=artifact.execution_contract,
-            execution_intent=ExecutionIntent.EXACT_VALIDATION,
-            execution_mode=ExecutionMode.STRICT,
-        )
-        with self._tx():
-            session = start_execution_session(
-                artifact,
-                request,
-                self.stores,
-                ann_runner=getattr(self.backend, "ann", None),
-            )
-            exec_result, results_iter = execute_request(
-                session,
-                self.stores,
-                ann_runner=getattr(self.backend, "ann", None),
-            )
-            results = list(results_iter)
-        target = next((r for r in results if r.vector_id == req.result_id), None)
+        latest = self.stores.ledger.latest_execution_result(artifact.artifact_id)
+        if latest is None:
+            raise NotFoundError(message="No execution results available to explain")
+        target = next((r for r in latest.results if r.vector_id == req.result_id), None)
         if target is None:
-            raise InvariantError(message="result not found")
+            raise NotFoundError(message="result not found")
         data = explain_result(target, self.stores)
         document = cast(Document, data["document"])
         chunk = cast(Chunk, data["chunk"])
@@ -642,7 +702,7 @@ class Orchestrator:
                 else "experimental"
             ),
             "replayable": artifact_meta.replayable,
-            "execution_id": exec_result.execution_id,
+            "execution_id": latest.execution_id,
         }
 
     def replay(
