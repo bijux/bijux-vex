@@ -4,12 +4,26 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bijux-vex"
-description = "bijux-vex: contract-driven vector execution runtime with explicit determinism semantics."
-readme = "README.md"
+description = "Vector execution runtime with replayable determinism and audited ANN (nothing implicit)."
+readme = "PYPI.md"
 requires-python = ">=3.11,<4"
 license = { text = "MIT" }
 authors = [{ name = "Bijan Mousavi", email = "mousavi.bijan@gmail.com" }]
-keywords = ["vector", "determinism", "bijux", "vex", "execution"]
+maintainers = [{ name = "Bijan Mousavi", email = "mousavi.bijan@gmail.com" }]
+keywords = [
+  "ann",
+  "audit",
+  "bijux",
+  "determinism",
+  "execution",
+  "nearest-neighbor",
+  "provenance",
+  "replay",
+  "reproducibility",
+  "vector",
+  "vector-search",
+  "vex",
+]
 dynamic = ["version"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -22,6 +36,8 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+  "Operating System :: OS Independent",
   "Topic :: Software Development :: Libraries",
   "Topic :: Security",
 ]
@@ -41,26 +57,29 @@ api = [
 config = [
   "PyYAML>=6.0,<7.0",
 ]
-llm = [
-]
 embeddings = [
   "sentence-transformers>=2.7.0,<3.0",
 ]
-nd-hnsw = [
-  "hnswlib>=0.8.0,<1.0",
-]
 nd = [
   "hnswlib>=0.8.0,<1.0",
-]
-vectorstores = [
-  "faiss-cpu>=1.7.4,<2.0",
-  "numpy>=1.26,<3.0",
-  "qdrant-client>=1.9.0,<2.0",
 ]
 vdb = [
   "faiss-cpu>=1.7.4,<2.0",
   "numpy>=1.26,<3.0",
   "qdrant-client>=1.9.0,<2.0",
+]
+docs = [
+  "mkdocs>=1.6.1,<2.0",
+  "mkdocs-material>=9.5.39,<10.0",
+  "mkdocstrings[python]>=0.26.1,<1.0",
+  "mkdocs-git-revision-date-localized-plugin>=1.2.0,<2.0",
+  "mkdocs-include-markdown-plugin",
+  "mkdocs-gen-files",
+  "mkdocs-literate-nav",
+  "mkdocs-redirects>=1.2,<2.0",
+  "mkdocs-minify-plugin>=0.7,<1.0",
+  "mkdocs-glightbox>=0.3,<1.0",
+  "mkdocs-material[imaging]>=9.5.39,<10.0",
 ]
 dev = [
   "types-PyYAML>=6.0.12,<7.0",
@@ -98,18 +117,6 @@ dev = [
   "pip-audit>=2.7.3,<3.0",
   "commitizen>=4.0.0,<5.0",
 
-  "mkdocs>=1.6.1,<2.0",
-  "mkdocs-material>=9.5.39,<10.0",
-  "mkdocstrings[python]>=0.26.1,<1.0",
-  "mkdocs-git-revision-date-localized-plugin>=1.2.0,<2.0",
-  "mkdocs-include-markdown-plugin",
-  "mkdocs-gen-files",
-  "mkdocs-literate-nav",
-  "mkdocs-redirects>=1.2,<2.0",
-  "mkdocs-minify-plugin>=0.7,<1.0",
-  "mkdocs-glightbox>=0.3,<1.0",
-  "mkdocs-material[imaging]>=9.5.39,<10.0",
-
   "prance>=25.4.0.0",
   "openapi-spec-validator>=0.7.1,<1.0",
   "schemathesis>=4.0,<5.0",
@@ -125,9 +132,12 @@ dev = [
 
 [project.urls]
 Homepage = "https://bijux.github.io/bijux-vex/"
-Repository = "https://github.com/bijux/bijux-vex"
 Documentation = "https://bijux.github.io/bijux-vex/"
+Source = "https://github.com/bijux/bijux-vex"
 Issues = "https://github.com/bijux/bijux-vex/issues"
+Changelog = "https://github.com/bijux/bijux-vex/blob/main/CHANGELOG.md"
+Security = "https://github.com/bijux/bijux-vex/blob/main/SECURITY.md"
+Funding = "https://github.com/sponsors/bijux"
 
 [project.entry-points."bijux_vex.vectorstores"]
 example = "bijux_vex.plugins.example:register_vectorstore"
