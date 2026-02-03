@@ -131,6 +131,7 @@ class ApproximateAnnAlgorithm(VectorExecutionAlgorithm):
             return self.runner.deterministic_fallback(
                 artifact.artifact_id, execution.request
             )
+        self.runner.set_randomness_profile(execution.randomness)
         request = execution.request
         nd_settings = request.nd_settings
         if request.vector is None:
@@ -147,9 +148,21 @@ class ApproximateAnnAlgorithm(VectorExecutionAlgorithm):
         candidates = list(self.runner.approximate_request(artifact, request))
         if not candidates:
             return ()
-        need_rescore = candidate_k != execution.request.top_k or nd_settings is not None
+        need_rescore = True
         if not need_rescore:
-            return candidates
+            candidates.sort(key=scoring.tie_break_key)
+            limited = candidates[: execution.request.top_k]
+            for idx, res in enumerate(limited, start=1):
+                limited[idx - 1] = Result(
+                    request_id=res.request_id,
+                    document_id=res.document_id,
+                    chunk_id=res.chunk_id,
+                    vector_id=res.vector_id,
+                    artifact_id=res.artifact_id,
+                    score=res.score,
+                    rank=idx,
+                )
+            return limited
         query_vec = execution.request.vector
         if query_vec is None:
             raise ValidationError(

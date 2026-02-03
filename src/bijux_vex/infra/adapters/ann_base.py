@@ -82,6 +82,11 @@ class AnnExecutionRequestRunner(ABC):
         """Return candidate ids, distances, and metadata."""
         raise InvariantError(message="ANN query not implemented")
 
+    def set_randomness_profile(self, randomness: object | None) -> None:
+        """Optional hook to pass randomness profile (e.g. seed) into the runner."""
+        _ = randomness
+        return None
+
     @abstractmethod
     def approximate_request(
         self, artifact: ExecutionArtifact, request: ExecutionRequest
