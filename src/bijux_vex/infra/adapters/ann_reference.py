@@ -22,6 +22,7 @@ from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.core.execution_result import ApproximationReport
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
+from bijux_vex.infra.logging import log_event
 
 
 class ReferenceAnnRunner(AnnExecutionRequestRunner):
@@ -55,6 +56,12 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
         self, artifact: ExecutionArtifact, request: ExecutionRequest
     ) -> Iterable[Result]:
         if hnswlib is None:
+            if request.nd_settings is not None:
+                log_event(
+                    "nd_backend_downgrade",
+                    backend="truncate",
+                    reason="hnswlib unavailable",
+                )
             return self._truncate_results(artifact, request)
         return self._hnsw_results(artifact, request)
 
@@ -207,17 +214,15 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
                         space="l2" if artifact.metric == "l2" else "ip", dim=dim
                     )
                     index.load_index(str(index_file))
-                    index.set_ef(10)
+                    self._apply_nd_settings(request)
+                    index.set_ef(self._ef_search)
                     self._index = index
                     self._ids = ids
-                    self._m = getattr(self, "_m", 8)
-                    self._ef_search = getattr(self, "_ef_search", 10)
             if self._index is None:
                 space = "l2" if artifact.metric == "l2" else "ip"
                 index = hnswlib.Index(space=space, dim=dim)
                 index.set_seed(0)
-                self._m = 8
-                self._ef_search = 10
+                self._apply_nd_settings(request)
                 index.init_index(max_elements=len(data), ef_construction=100, M=self._m)
                 index.add_items(data, list(range(len(data))))
                 index.set_ef(self._ef_search)
@@ -232,6 +237,9 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
             "query_params": {
                 "k": request.top_k or 1,
                 "ef_search": getattr(self, "_ef_search", 10),
+                "nd_profile": getattr(self, "_nd_profile", None),
+                "target_recall": getattr(self, "_target_recall", None),
+                "latency_budget_ms": getattr(self, "_latency_budget_ms", None),
             },
             "seed": 0,
         }
@@ -261,6 +269,53 @@ class ReferenceAnnRunner(AnnExecutionRequestRunner):
                 )
             )
         return tuple(results)
+
+    def _apply_nd_settings(self, request: ExecutionRequest) -> None:
+        profile = "balanced"
+        target_recall = None
+        latency_budget_ms = None
+        if request.nd_settings is not None:
+            if request.nd_settings.profile:
+                profile = request.nd_settings.profile
+            target_recall = request.nd_settings.target_recall
+            latency_budget_ms = request.nd_settings.latency_budget_ms
+
+        profile_map = {
+            "fast": (8, 20),
+            "balanced": (16, 50),
+            "accurate": (32, 100),
+        }
+        base_m, base_ef = profile_map.get(profile, (16, 50))
+
+        if target_recall is not None:
+            if target_recall >= 0.99:
+                base_ef = max(base_ef, 200)
+            elif target_recall >= 0.95:
+                base_ef = max(base_ef, 100)
+            elif target_recall >= 0.9:
+                base_ef = max(base_ef, 50)
+            else:
+                base_ef = max(base_ef, 20)
+
+        applied_ef = base_ef
+        if latency_budget_ms is not None:
+            if latency_budget_ms < 5:
+                applied_ef = min(applied_ef, 20)
+            elif latency_budget_ms < 20:
+                applied_ef = min(applied_ef, 50)
+            if applied_ef < base_ef:
+                log_event(
+                    "nd_latency_downgrade",
+                    requested_ef=base_ef,
+                    applied_ef=applied_ef,
+                    latency_budget_ms=latency_budget_ms,
+                )
+
+        self._m = base_m
+        self._ef_search = applied_ef
+        self._nd_profile = profile
+        self._target_recall = target_recall
+        self._latency_budget_ms = latency_budget_ms
 
     def _query_params_metadata(self) -> tuple[tuple[str, str], ...]:
         params = self._last_query_metadata.get("query_params")
