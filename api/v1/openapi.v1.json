@@ -1,43 +1,292 @@
 {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "bijux-vex execution API",
+    "version": "v1"
+  },
+  "paths": {
+    "/capabilities": {
+      "get": {
+        "summary": "Capabilities",
+        "operationId": "capabilities_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendCapabilitiesReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/create": {
+      "post": {
+        "summary": "Create",
+        "operationId": "create_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Create Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingest": {
+      "post": {
+        "summary": "Ingest",
+        "operationId": "ingest_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ingest Ingest Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/artifact": {
+      "post": {
+        "summary": "Artifact",
+        "operationId": "artifact_artifact_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionArtifactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Artifact Artifact Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute": {
+      "post": {
+        "summary": "Execute",
+        "operationId": "execute_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Execute Execute Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/explain": {
+      "post": {
+        "summary": "Explain",
+        "operationId": "explain_explain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Explain Explain Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/replay": {
+      "post": {
+        "summary": "Replay",
+        "operationId": "replay_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Replay Replay Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
-      "BackendCapabilitiesReport": {
-        "additionalProperties": false,
+      "CreateRequest": {
         "properties": {
-          "ann_status": {
-            "title": "Ann Status",
-            "type": "string"
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateRequest"
+      },
+      "ExecutionArtifactRequest": {
+        "properties": {
+          "execution_contract": {
+            "$ref": "#/components/schemas/ExecutionContract"
           },
-          "backend": {
-            "title": "Backend",
-            "type": "string"
-          },
-          "contracts": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Contracts",
-            "type": "array"
-          },
-          "deterministic_query": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deterministic Query"
-          },
-          "execution_modes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Execution Modes",
-            "type": "array"
-          },
-          "isolation_level": {
+          "vector_store": {
             "anyOf": [
               {
                 "type": "string"
@@ -46,107 +295,43 @@
                 "type": "null"
               }
             ],
-            "title": "Isolation Level"
+            "title": "Vector Store"
           },
-          "max_vector_size": {
+          "vector_store_uri": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Max Vector Size"
+            "title": "Vector Store Uri"
           },
-          "metrics": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Metrics",
-            "type": "array"
-          },
-          "replayable": {
+          "vector_store_options": {
             "anyOf": [
               {
-                "type": "boolean"
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Replayable"
-          },
-          "storage_backends": {
-            "items": {
-              "$ref": "#/components/schemas/StorageBackendDescriptor"
-            },
-            "title": "Storage Backends",
-            "type": "array"
-          },
-          "supports_ann": {
-            "title": "Supports Ann",
-            "type": "boolean"
+            "title": "Vector Store Options"
           }
         },
-        "required": [
-          "backend",
-          "contracts",
-          "deterministic_query",
-          "supports_ann",
-          "replayable",
-          "metrics",
-          "max_vector_size",
-          "isolation_level",
-          "execution_modes",
-          "ann_status",
-          "storage_backends"
-        ],
-        "title": "BackendCapabilitiesReport",
-        "type": "object"
-      },
-      "CreateRequest": {
         "additionalProperties": false,
-        "properties": {
-          "name": {
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "CreateRequest",
-        "type": "object"
-      },
-      "ExecutionArtifactRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "execution_contract": {
-            "$ref": "#/components/schemas/ExecutionContract"
-          }
-        },
+        "type": "object",
         "required": [
           "execution_contract"
         ],
-        "title": "ExecutionArtifactRequest",
-        "type": "object"
+        "title": "ExecutionArtifactRequest"
       },
       "ExecutionBudgetPayload": {
-        "additionalProperties": false,
         "properties": {
-          "max_error": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Error"
-          },
           "max_latency_ms": {
             "anyOf": [
               {
@@ -168,40 +353,32 @@
               }
             ],
             "title": "Max Memory Mb"
+          },
+          "max_error": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Error"
           }
         },
-        "title": "ExecutionBudgetPayload",
-        "type": "object"
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExecutionBudgetPayload"
       },
       "ExecutionContract": {
+        "type": "string",
         "enum": [
           "deterministic",
           "non_deterministic"
         ],
-        "title": "ExecutionContract",
-        "type": "string"
-      },
-      "ExecutionIntent": {
-        "enum": [
-          "exact_validation",
-          "reproducible_research",
-          "exploratory_search",
-          "production_retrieval"
-        ],
-        "title": "ExecutionIntent",
-        "type": "string"
-      },
-      "ExecutionMode": {
-        "enum": [
-          "strict",
-          "bounded",
-          "exploratory"
-        ],
-        "title": "ExecutionMode",
-        "type": "string"
+        "title": "ExecutionContract"
       },
       "ExecutionRequestPayload": {
-        "additionalProperties": false,
         "properties": {
           "artifact_id": {
             "anyOf": [
@@ -214,36 +391,6 @@
             ],
             "title": "Artifact Id"
           },
-          "execution_budget": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ExecutionBudgetPayload"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "execution_contract": {
-            "$ref": "#/components/schemas/ExecutionContract"
-          },
-          "execution_intent": {
-            "$ref": "#/components/schemas/ExecutionIntent"
-          },
-          "execution_mode": {
-            "$ref": "#/components/schemas/ExecutionMode",
-            "default": "strict"
-          },
-          "randomness_profile": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RandomnessProfilePayload"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "request_text": {
             "anyOf": [
               {
@@ -254,12 +401,6 @@
               }
             ],
             "title": "Request Text"
-          },
-          "top_k": {
-            "default": 5,
-            "exclusiveMinimum": 0.0,
-            "title": "Top K",
-            "type": "integer"
           },
           "vector": {
             "anyOf": [
@@ -274,18 +415,97 @@
               }
             ],
             "title": "Vector"
+          },
+          "top_k": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Top K",
+            "default": 5
+          },
+          "execution_contract": {
+            "$ref": "#/components/schemas/ExecutionContract"
+          },
+          "execution_intent": {
+            "type": "string",
+            "title": "Execution Intent"
+          },
+          "execution_mode": {
+            "type": "string",
+            "title": "Execution Mode",
+            "default": "strict"
+          },
+          "execution_budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionBudgetPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "randomness_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RandomnessProfilePayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vector_store": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store"
+          },
+          "vector_store_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Uri"
+          },
+          "vector_store_options": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Options"
           }
         },
+        "additionalProperties": false,
+        "type": "object",
         "required": [
           "execution_contract",
           "execution_intent"
         ],
-        "title": "ExecutionRequestPayload",
-        "type": "object"
+        "title": "ExecutionRequestPayload"
       },
       "ExplainRequest": {
-        "additionalProperties": false,
         "properties": {
+          "result_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Result Id"
+          },
           "artifact_id": {
             "anyOf": [
               {
@@ -296,18 +516,14 @@
               }
             ],
             "title": "Artifact Id"
-          },
-          "result_id": {
-            "minLength": 1,
-            "title": "Result Id",
-            "type": "string"
           }
         },
+        "additionalProperties": false,
+        "type": "object",
         "required": [
           "result_id"
         ],
-        "title": "ExplainRequest",
-        "type": "object"
+        "title": "ExplainRequest"
       },
       "HTTPValidationError": {
         "properties": {
@@ -315,49 +531,118 @@
             "items": {
               "$ref": "#/components/schemas/ValidationError"
             },
-            "title": "Detail",
-            "type": "array"
+            "type": "array",
+            "title": "Detail"
           }
         },
-        "title": "HTTPValidationError",
-        "type": "object"
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "IngestRequest": {
-        "additionalProperties": false,
         "properties": {
           "documents": {
             "items": {
               "type": "string"
             },
-            "title": "Documents",
-            "type": "array"
+            "type": "array",
+            "title": "Documents"
           },
           "vectors": {
-            "items": {
-              "items": {
-                "type": "number"
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
               },
-              "type": "array"
-            },
-            "title": "Vectors",
-            "type": "array"
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vectors"
+          },
+          "embed_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embed Provider"
+          },
+          "embed_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embed Model"
+          },
+          "cache_embeddings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Embeddings"
+          },
+          "vector_store": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store"
+          },
+          "vector_store_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Uri"
+          },
+          "vector_store_options": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vector Store Options"
           }
         },
+        "additionalProperties": false,
+        "type": "object",
         "required": [
-          "documents",
-          "vectors"
+          "documents"
         ],
-        "title": "IngestRequest",
-        "type": "object"
+        "title": "IngestRequest"
       },
       "RandomnessProfilePayload": {
-        "additionalProperties": false,
         "properties": {
-          "bounded": {
-            "default": false,
-            "title": "Bounded",
-            "type": "boolean"
-          },
           "seed": {
             "anyOf": [
               {
@@ -382,19 +667,68 @@
               }
             ],
             "title": "Sources"
+          },
+          "bounded": {
+            "type": "boolean",
+            "title": "Bounded",
+            "default": false
           }
         },
-        "title": "RandomnessProfilePayload",
-        "type": "object"
-      },
-      "StorageBackendDescriptor": {
         "additionalProperties": false,
+        "type": "object",
+        "title": "RandomnessProfilePayload"
+      },
+      "BackendCapabilitiesReport": {
         "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
+          "backend": {
+            "type": "string",
+            "title": "Backend"
           },
-          "notes": {
+          "contracts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contracts"
+          },
+          "deterministic_query": {
+            "type": "boolean",
+            "title": "Deterministic Query"
+          },
+          "supports_ann": {
+            "type": "boolean",
+            "title": "Supports Ann"
+          },
+          "replayable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replayable"
+          },
+          "metrics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "max_vector_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Vector Size"
+          },
+          "isolation_level": {
             "anyOf": [
               {
                 "type": "string"
@@ -403,7 +737,58 @@
                 "type": "null"
               }
             ],
-            "title": "Notes"
+            "title": "Isolation Level"
+          },
+          "execution_modes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Execution Modes"
+          },
+          "ann_status": {
+            "type": "string",
+            "title": "Ann Status"
+          },
+          "storage_backends": {
+            "items": {
+              "$ref": "#/components/schemas/StorageBackendDescriptor"
+            },
+            "type": "array",
+            "title": "Storage Backends"
+          },
+          "vector_stores": {
+            "items": {
+              "$ref": "#/components/schemas/VectorStoreDescriptor"
+            },
+            "type": "array",
+            "title": "Vector Stores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend",
+          "contracts",
+          "deterministic_query",
+          "supports_ann",
+          "metrics",
+          "execution_modes",
+          "ann_status",
+          "storage_backends",
+          "vector_stores"
+        ],
+        "title": "BackendCapabilitiesReport"
+      },
+      "StorageBackendDescriptor": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
           },
           "persistence": {
             "anyOf": [
@@ -416,17 +801,86 @@
             ],
             "title": "Persistence"
           },
-          "status": {
-            "title": "Status",
-            "type": "string"
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
           }
         },
+        "additionalProperties": false,
+        "type": "object",
         "required": [
           "name",
           "status"
         ],
-        "title": "StorageBackendDescriptor",
-        "type": "object"
+        "title": "StorageBackendDescriptor"
+      },
+      "VectorStoreDescriptor": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "supports_exact": {
+            "type": "boolean",
+            "title": "Supports Exact"
+          },
+          "supports_ann": {
+            "type": "boolean",
+            "title": "Supports Ann"
+          },
+          "deterministic_exact": {
+            "type": "boolean",
+            "title": "Deterministic Exact"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "available",
+          "supports_exact",
+          "supports_ann",
+          "deterministic_exact",
+          "experimental"
+        ],
+        "title": "VectorStoreDescriptor"
       },
       "ValidationError": {
         "properties": {
@@ -441,290 +895,25 @@
                 }
               ]
             },
-            "title": "Location",
-            "type": "array"
+            "type": "array",
+            "title": "Location"
           },
           "msg": {
-            "title": "Message",
-            "type": "string"
+            "type": "string",
+            "title": "Message"
           },
           "type": {
-            "title": "Error Type",
-            "type": "string"
+            "type": "string",
+            "title": "Error Type"
           }
         },
+        "type": "object",
         "required": [
           "loc",
           "msg",
           "type"
         ],
-        "title": "ValidationError",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "title": "bijux-vex execution API",
-    "version": "v1"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/artifact": {
-      "post": {
-        "operationId": "artifact_artifact_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExecutionArtifactRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Artifact Artifact Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Artifact"
-      }
-    },
-    "/capabilities": {
-      "get": {
-        "operationId": "capabilities_capabilities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackendCapabilitiesReport"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Capabilities"
-      }
-    },
-    "/create": {
-      "post": {
-        "operationId": "create_create_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Create Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create"
-      }
-    },
-    "/execute": {
-      "post": {
-        "operationId": "execute_execute_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExecutionRequestPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Execute Execute Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Execute"
-      }
-    },
-    "/explain": {
-      "post": {
-        "operationId": "explain_explain_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExplainRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Explain Explain Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Explain"
-      }
-    },
-    "/ingest": {
-      "post": {
-        "operationId": "ingest_ingest_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Ingest Ingest Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Ingest"
-      }
-    },
-    "/replay": {
-      "post": {
-        "operationId": "replay_replay_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExecutionRequestPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Replay Replay Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Replay"
+        "title": "ValidationError"
       }
     }
   }

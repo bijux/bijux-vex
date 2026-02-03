@@ -181,6 +181,23 @@ components:
       properties:
         execution_contract:
           $ref: '#/components/schemas/ExecutionContract'
+        vector_store:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store
+        vector_store_uri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store Uri
+        vector_store_options:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Vector Store Options
       additionalProperties: false
       type: object
       required:
@@ -253,6 +270,23 @@ components:
           anyOf:
           - $ref: '#/components/schemas/RandomnessProfilePayload'
           - type: 'null'
+        vector_store:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store
+        vector_store_uri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store Uri
+        vector_store_options:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Vector Store Options
       additionalProperties: false
       type: object
       required:
@@ -292,17 +326,50 @@ components:
           type: array
           title: Documents
         vectors:
-          items:
-            items:
-              type: number
+          anyOf:
+          - items:
+              items:
+                type: number
+              type: array
             type: array
-          type: array
+          - type: 'null'
           title: Vectors
+        embed_provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Embed Provider
+        embed_model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Embed Model
+        cache_embeddings:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cache Embeddings
+        vector_store:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store
+        vector_store_uri:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vector Store Uri
+        vector_store_options:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Vector Store Options
       additionalProperties: false
       type: object
       required:
       - documents
-      - vectors
       title: IngestRequest
     RandomnessProfilePayload:
       properties:
@@ -374,6 +441,11 @@ components:
             $ref: '#/components/schemas/StorageBackendDescriptor'
           type: array
           title: Storage Backends
+        vector_stores:
+          items:
+            $ref: '#/components/schemas/VectorStoreDescriptor'
+          type: array
+          title: Vector Stores
       additionalProperties: false
       type: object
       required:
@@ -385,6 +457,7 @@ components:
       - execution_modes
       - ann_status
       - storage_backends
+      - vector_stores
       title: BackendCapabilitiesReport
     StorageBackendDescriptor:
       properties:
@@ -410,6 +483,46 @@ components:
       - name
       - status
       title: StorageBackendDescriptor
+    VectorStoreDescriptor:
+      properties:
+        name:
+          type: string
+          title: Name
+        available:
+          type: boolean
+          title: Available
+        supports_exact:
+          type: boolean
+          title: Supports Exact
+        supports_ann:
+          type: boolean
+          title: Supports Ann
+        deterministic_exact:
+          type: boolean
+          title: Deterministic Exact
+        experimental:
+          type: boolean
+          title: Experimental
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - available
+      - supports_exact
+      - supports_ann
+      - deterministic_exact
+      - experimental
+      title: VectorStoreDescriptor
     ValidationError:
       properties:
         loc:
