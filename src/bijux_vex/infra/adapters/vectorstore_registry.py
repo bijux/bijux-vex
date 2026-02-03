@@ -124,7 +124,14 @@ class VectorStoreRegistry:
         raw = name.lower()
         key = raw[4:] if raw.startswith("vdb:") else raw
         if key not in self._entries:
-            raise ValidationError(message=f"Unknown vector store backend: {name}")
+            raise ValidationError(
+                message=(
+                    "What happened: unknown vector store backend.\n"
+                    f"Why: '{name}' is not registered.\n"
+                    "How to fix: choose a backend listed in `bijux vex capabilities` or install the plugin.\n"
+                    "Where to learn more: docs/spec/vectorstore_adapter.md"
+                )
+            )
         descriptor, factory, availability, _contract = self._entries[key]
         available = descriptor.available
         version = descriptor.version
@@ -134,7 +141,12 @@ class VectorStoreRegistry:
         if not available:
             hint = f" (install extras for {descriptor.name})" if descriptor.name else ""
             raise BackendCapabilityError(
-                message=f"Vector store backend '{descriptor.name}' is unavailable{hint}"
+                message=(
+                    "What happened: vector store backend unavailable.\n"
+                    f"Why: '{descriptor.name}' could not be loaded{hint}.\n"
+                    "How to fix: install the matching extras and retry.\n"
+                    "Where to learn more: docs/spec/vectorstore_adapter.md"
+                )
             )
         resolved_descriptor = VectorStoreDescriptor(
             name=descriptor.name,
@@ -151,7 +163,12 @@ class VectorStoreRegistry:
             adapter.connect()
         except Exception as exc:
             raise BackendCapabilityError(
-                message=f"Failed to connect to vector store '{descriptor.name}': {exc}"
+                message=(
+                    "What happened: failed to connect to vector store.\n"
+                    f"Why: backend '{descriptor.name}' raised {exc}.\n"
+                    "How to fix: verify the URI/options and backend installation.\n"
+                    "Where to learn more: docs/spec/failure_semantics.md"
+                )
             ) from exc
         return VectorStoreResolution(
             descriptor=resolved_descriptor,
