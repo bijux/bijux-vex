@@ -1,0 +1,260 @@
+[
+  {
+    "command": "capabilities",
+    "params": []
+  },
+  {
+    "command": "compare",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "artifact_a",
+        "opts": [
+          "--artifact-a"
+        ],
+        "required": false,
+        "default": "art-1"
+      },
+      {
+        "param_type": "option",
+        "name": "artifact_b",
+        "opts": [
+          "--artifact-b"
+        ],
+        "required": false,
+        "default": "art-1"
+      },
+      {
+        "param_type": "option",
+        "name": "execution_contract",
+        "opts": [
+          "--execution-contract"
+        ],
+        "required": false,
+        "default": "deterministic"
+      },
+      {
+        "param_type": "option",
+        "name": "execution_intent",
+        "opts": [
+          "--execution-intent"
+        ],
+        "required": true,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "top_k",
+        "opts": [
+          "--top-k"
+        ],
+        "required": false,
+        "default": 5
+      },
+      {
+        "param_type": "option",
+        "name": "vector",
+        "opts": [
+          "--vector"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "execute",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "artifact_id",
+        "opts": [
+          "--artifact-id"
+        ],
+        "required": false,
+        "default": "art-1"
+      },
+      {
+        "param_type": "option",
+        "name": "execution_contract",
+        "opts": [
+          "--execution-contract"
+        ],
+        "required": true,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "execution_intent",
+        "opts": [
+          "--execution-intent"
+        ],
+        "required": true,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "execution_mode",
+        "opts": [
+          "--execution-mode"
+        ],
+        "required": false,
+        "default": "strict"
+      },
+      {
+        "param_type": "option",
+        "name": "max_error",
+        "opts": [
+          "--max-error"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "max_latency_ms",
+        "opts": [
+          "--max-latency-ms"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "max_memory_mb",
+        "opts": [
+          "--max-memory-mb"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "randomness_bounded",
+        "opts": [
+          "--randomness-bounded"
+        ],
+        "required": false,
+        "default": false
+      },
+      {
+        "param_type": "option",
+        "name": "randomness_seed",
+        "opts": [
+          "--randomness-seed"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "randomness_sources",
+        "opts": [
+          "--randomness-sources"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "request_text",
+        "opts": [
+          "--request-text"
+        ],
+        "required": false,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "top_k",
+        "opts": [
+          "--top-k"
+        ],
+        "required": false,
+        "default": 5
+      },
+      {
+        "param_type": "option",
+        "name": "vector",
+        "opts": [
+          "--vector"
+        ],
+        "required": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "explain",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "result_id",
+        "opts": [
+          "--result-id"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "ingest",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "doc",
+        "opts": [
+          "--doc"
+        ],
+        "required": true,
+        "default": null
+      },
+      {
+        "param_type": "option",
+        "name": "vector",
+        "opts": [
+          "--vector"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "list-artifacts",
+    "params": []
+  },
+  {
+    "command": "materialize",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "execution_contract",
+        "opts": [
+          "--execution-contract"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "replay",
+    "params": [
+      {
+        "param_type": "option",
+        "name": "request_text",
+        "opts": [
+          "--request-text"
+        ],
+        "required": true,
+        "default": null
+      }
+    ]
+  },
+  {
+    "command": "root",
+    "params": []
+  }
+]
