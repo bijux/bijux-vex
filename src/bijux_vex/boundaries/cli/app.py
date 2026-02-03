@@ -20,7 +20,12 @@ from bijux_vex.bench.dataset import (
     save_dataset,
 )
 from bijux_vex.bench.runner import format_table, run_benchmark
-from bijux_vex.boundaries.exception_bridge import to_cli_exit
+from bijux_vex.boundaries.exception_bridge import (
+    is_refusal,
+    record_failure,
+    refusal_payload,
+    to_cli_exit,
+)
 from bijux_vex.boundaries.pydantic_edges.models import (
     ExecutionArtifactRequest,
     ExecutionBudgetPayload,
@@ -40,6 +45,7 @@ from bijux_vex.core.errors import BijuxError, ValidationError
 from bijux_vex.core.execution_intent import ExecutionIntent
 from bijux_vex.core.execution_mode import ExecutionMode
 from bijux_vex.infra.adapters.vectorstore_registry import VECTOR_STORES
+from bijux_vex.infra.metrics import METRICS
 from bijux_vex.services.execution_engine import VectorExecutionEngine
 
 app = typer.Typer(add_completion=False)
@@ -117,6 +123,17 @@ def _config_to_dict(config: ExecutionConfig | None) -> dict[str, object]:
     if config is None:
         return {}
     return asdict(config)
+
+
+def _redact_config(config: ExecutionConfig | None) -> dict[str, object]:
+    payload = _config_to_dict(config)
+    vs = payload.get("vector_store")
+    if isinstance(vs, dict) and vs.get("uri"):
+        resolved = VECTOR_STORES.resolve(
+            vs.get("backend") or "memory", uri=str(vs.get("uri"))
+        )
+        vs["uri"] = resolved.uri_redacted
+    return payload
 
 
 def _parse_contract(raw: str) -> ExecutionContract:
@@ -240,6 +257,7 @@ def ingest(
     cache_embeddings: str | None = typer.Option(None, "--cache-embeddings"),
     vector_store: str | None = typer.Option(None, "--vector-store"),
     vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+    correlation_id: str | None = typer.Option(None, "--correlation-id"),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ) -> None:
     try:
@@ -250,6 +268,7 @@ def ingest(
             embed_model=embed_model,
             embed_provider=embed_provider,
             cache_embeddings=cache_embeddings,
+            correlation_id=correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
         )
@@ -281,6 +300,9 @@ def ingest(
         result = engine.ingest(req)
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -317,6 +339,9 @@ def materialize(
         )
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -361,6 +386,7 @@ def execute(
     max_error: float | None = typer.Option(None, "--max-error"),
     vector_store: str | None = typer.Option(None, "--vector-store"),
     vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+    correlation_id: str | None = typer.Option(None, "--correlation-id"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     explain: bool = typer.Option(False, "--explain"),
 ) -> None:
@@ -396,6 +422,7 @@ def execute(
                 max_memory_mb=max_memory_mb,
                 max_error=max_error,
             ),
+            correlation_id=correlation_id,
             vector_store=vector_store,
             vector_store_uri=vector_store_uri,
         )
@@ -440,6 +467,9 @@ def execute(
             return
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -456,6 +486,9 @@ def explain(
         result = engine.explain(req)
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -471,6 +504,9 @@ def replay(
         result = engine.replay(request_text)
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -522,6 +558,9 @@ def compare(
         )
         _emit(ctx, result)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -549,7 +588,13 @@ def vdb_status(
             status.update(adapter.status())
         _emit(ctx, status)
     except BijuxError as exc:
-        _emit(ctx, {"backend": vector_store, "reachable": False, "error": str(exc)})
+        record_failure(exc)
+        payload = {"backend": vector_store, "reachable": False}
+        if is_refusal(exc):
+            payload["error"] = refusal_payload(exc)
+        else:
+            payload["error"] = {"message": str(exc)}
+        _emit(ctx, payload)
     except Exception:  # pragma: no cover
         sys.exit(1)
 
@@ -575,7 +620,13 @@ def vdb_rebuild(
         status = adapter.rebuild(index_type=index_type)
         _emit(ctx, status)
     except BijuxError as exc:
-        _emit(ctx, {"backend": vector_store, "reachable": False, "error": str(exc)})
+        record_failure(exc)
+        payload = {"backend": vector_store, "reachable": False}
+        if is_refusal(exc):
+            payload["error"] = refusal_payload(exc)
+        else:
+            payload["error"] = {"message": str(exc)}
+        _emit(ctx, payload)
     except Exception:  # pragma: no cover
         sys.exit(1)
 
@@ -645,6 +696,9 @@ def bench(
                     sys.exit(2)
         _emit(ctx, result, table=table)
     except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
         sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
@@ -655,7 +709,74 @@ def bench(
 def config_show(ctx: typer.Context) -> None:
     try:
         config = _load_config(ctx.obj.config_path) if ctx.obj else None
-        _emit(ctx, _config_to_dict(config))
+        _emit(ctx, _redact_config(config))
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@app.command("metrics")
+@no_type_check
+def metrics_snapshot(ctx: typer.Context) -> None:
+    try:
+        snapshot = METRICS.snapshot()
+        _emit(
+            ctx,
+            {"counters": snapshot.counters, "timers_ms": snapshot.timers_ms},
+        )
+    except Exception:  # pragma: no cover
+        sys.exit(1)
+
+
+@app.command("debug-bundle")
+@no_type_check
+def debug_bundle(
+    ctx: typer.Context,
+    include_provenance: bool = typer.Option(False, "--include-provenance"),
+    vector_store: str | None = typer.Option(None, "--vector-store"),
+    vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+) -> None:
+    try:
+        base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
+        config = _build_config(
+            vector_store=vector_store,
+            vector_store_uri=vector_store_uri,
+            base_config=base_config,
+        )
+        engine = VectorExecutionEngine(config=config)
+        status = {
+            "backend": engine.vector_store_resolution.descriptor.name,
+            "reachable": True,
+            "version": engine.vector_store_resolution.descriptor.version,
+            "uri_redacted": engine.vector_store_resolution.uri_redacted,
+        }
+        adapter = engine.vector_store_resolution.adapter
+        if hasattr(adapter, "status"):
+            status.update(adapter.status())
+        bundle: dict[str, object] = {
+            "config": _redact_config(config),
+            "capabilities": engine.capabilities(),
+            "vector_store_status": status,
+            "metrics": METRICS.snapshot().__dict__,
+        }
+        if include_provenance:
+            artifacts = tuple(engine.stores.ledger.list_artifacts())
+            latest_exec: dict[str, str] = {}
+            for artifact in artifacts:
+                stored = engine.stores.ledger.latest_execution_result(
+                    artifact.artifact_id
+                )
+                if stored is not None:
+                    latest_exec[artifact.artifact_id] = stored.execution_id
+            bundle["provenance"] = {
+                "artifacts": [a.artifact_id for a in artifacts],
+                "latest_execution_ids": latest_exec,
+            }
+        _emit(ctx, bundle)
+    except BijuxError as exc:
+        record_failure(exc)
+        if is_refusal(exc):
+            _emit(ctx, {"error": refusal_payload(exc)})
+        sys.exit(to_cli_exit(exc))
     except Exception:  # pragma: no cover
         sys.exit(1)
 

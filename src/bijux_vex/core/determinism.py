@@ -13,6 +13,7 @@ from bijux_vex.core.errors import (
 from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
 from bijux_vex.infra.adapters.vectorstore_registry import VectorStoreDescriptor
+from bijux_vex.infra.logging import log_event
 
 
 @dataclass(frozen=True)
@@ -39,9 +40,17 @@ def classify_execution(
             raise DeterminismViolationError(
                 message="Deterministic execution requires a deterministic vector store"
             )
-        return DeterminismClassification(
+        classification = DeterminismClassification(
             label="deterministic", randomness_sources=(), reasons=()
         )
+        log_event(
+            "determinism_classification",
+            contract=contract.value,
+            vector_store=vector_store.name if vector_store else None,
+            label=classification.label,
+            randomness_sources=",".join(classification.randomness_sources),
+        )
+        return classification
 
     # Non-deterministic / ANN path
     if vector_store and not vector_store.supports_ann:
@@ -57,19 +66,35 @@ def classify_execution(
             message="Non-deterministic execution requires declared randomness"
         )
     if randomness is None:
-        return DeterminismClassification(
+        classification = DeterminismClassification(
             label="nondeterministic", randomness_sources=(), reasons=()
         )
+        log_event(
+            "determinism_classification",
+            contract=contract.value,
+            vector_store=vector_store.name if vector_store else None,
+            label=classification.label,
+            randomness_sources=",".join(classification.randomness_sources),
+        )
+        return classification
     if not randomness.sources and randomness.seed is None:
         raise DeterminismViolationError(
             message="Non-deterministic execution requires seed or randomness sources"
         )
     label = "bounded" if randomness.bounded else "nondeterministic"
-    return DeterminismClassification(
+    classification = DeterminismClassification(
         label=label,
         randomness_sources=tuple(randomness.sources),
         reasons=(),
     )
+    log_event(
+        "determinism_classification",
+        contract=contract.value,
+        vector_store=vector_store.name if vector_store else None,
+        label=classification.label,
+        randomness_sources=",".join(classification.randomness_sources),
+    )
+    return classification
 
 
 __all__ = ["DeterminismClassification", "classify_execution"]

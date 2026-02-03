@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from bijux_vex.core.errors import PluginLoadError
 from bijux_vex.infra.plugins.contract import PluginContract
 from bijux_vex.infra.plugins.entrypoints import load_entrypoints
 
@@ -51,6 +52,9 @@ class EmbeddingProviderRegistry:
     def __init__(self) -> None:
         self._providers: dict[str, tuple[EmbeddingProviderFactory, PluginContract]] = {}
         self._default: str | None = None
+        self._plugin_loads: list[dict[str, object]] = []
+        self._plugin_sources: dict[str, dict[str, str | None]] = {}
+        self._active_plugin: dict[str, str | None] | None = None
 
     def register(
         self,
@@ -70,6 +74,8 @@ class EmbeddingProviderRegistry:
         self._providers[key] = (factory, contract)
         if default:
             self._default = key
+        if self._active_plugin is not None:
+            self._plugin_sources[key] = dict(self._active_plugin)
 
     def resolve(self, name: str | None = None) -> EmbeddingProvider:
         key = (name or self._default or "").lower()
@@ -78,7 +84,12 @@ class EmbeddingProviderRegistry:
         if key not in self._providers:
             raise ValueError(f"Unknown embedding provider: {name}")
         factory, _contract = self._providers[key]
-        return factory()
+        try:
+            return factory()
+        except Exception as exc:
+            raise PluginLoadError(
+                message=f"Embedding plugin failed to initialize: {exc}"
+            ) from exc
 
     def providers(self) -> list[str]:
         return sorted(self._providers.keys())
@@ -86,6 +97,47 @@ class EmbeddingProviderRegistry:
     @property
     def default(self) -> str | None:
         return self._default
+
+    def _record_plugin_load(
+        self,
+        meta: dict[str, str | None],
+        *,
+        status: str,
+        warning: str | None = None,
+    ) -> None:
+        entry: dict[str, object] = dict(meta)
+        entry["status"] = status
+        if warning:
+            entry["warning"] = warning
+        self._plugin_loads.append(entry)
+
+    def _set_active_plugin(self, meta: dict[str, str | None]) -> None:
+        self._active_plugin = dict(meta)
+
+    def _clear_active_plugin(self) -> None:
+        self._active_plugin = None
+
+    def plugin_reports(self) -> list[dict[str, object]]:
+        reports: list[dict[str, object]] = []
+        for name, meta in self._plugin_sources.items():
+            _factory, contract = self._providers[name]
+            reports.append(
+                {
+                    "name": name,
+                    "group": "bijux_vex.embeddings",
+                    "source": meta.get("name"),
+                    "version": meta.get("version"),
+                    "entrypoint": meta.get("entrypoint"),
+                    "status": "loaded",
+                    "determinism": contract.determinism,
+                    "randomness_sources": list(contract.randomness_sources),
+                    "approximation": contract.approximation,
+                }
+            )
+        reports.extend(
+            [entry for entry in self._plugin_loads if entry.get("status") != "loaded"]
+        )
+        return reports
 
 
 EMBEDDING_PROVIDERS = EmbeddingProviderRegistry()

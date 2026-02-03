@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT
+# Copyright © 2025 Bijan Mousavi
+from __future__ import annotations
+
+import json
+import logging
+import os
+from typing import Any
+
+_LOGGER = logging.getLogger("bijux_vex")
+
+
+def log_event(name: str, **fields: Any) -> None:
+    if not _LOGGER.handlers:
+        logging.basicConfig(level=logging.INFO)
+    payload = {"event": name, **fields}
+    fmt = (os.getenv("BIJUX_VEX_LOG_FORMAT") or "").lower()
+    if fmt == "json":
+        _LOGGER.info(json.dumps(payload, sort_keys=True))
+    else:
+        rendered = " ".join(f"{k}={v}" for k, v in payload.items())
+        _LOGGER.info(rendered)
+
+
+__all__ = ["log_event"]

@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-from bijux_vex.core.errors import BackendCapabilityError, ValidationError
+from bijux_vex.core.errors import (
+    BackendCapabilityError,
+    PluginLoadError,
+    ValidationError,
+)
 from bijux_vex.infra.adapters.vectorstore import VectorStoreAdapter
 from bijux_vex.infra.plugins.contract import PluginContract
 from bijux_vex.infra.plugins.entrypoints import load_entrypoints
@@ -99,6 +103,9 @@ class VectorStoreRegistry:
                 PluginContract,
             ],
         ] = {}
+        self._plugin_loads: list[dict[str, object]] = []
+        self._plugin_sources: dict[str, dict[str, str | None]] = {}
+        self._active_plugin: dict[str, str | None] | None = None
 
     def register(
         self,
@@ -115,6 +122,8 @@ class VectorStoreRegistry:
         if contract.randomness_sources is None:
             raise ValueError("Plugin contract must declare randomness sources")
         self._entries[key] = (descriptor, factory, availability, contract)
+        if self._active_plugin is not None:
+            self._plugin_sources[key] = dict(self._active_plugin)
 
     def resolve(
         self,
@@ -164,7 +173,12 @@ class VectorStoreRegistry:
             notes=notes,
             version=version,
         )
-        adapter = factory(uri, options)
+        try:
+            adapter = factory(uri, options)
+        except Exception as exc:
+            raise PluginLoadError(
+                message=f"Vector store plugin failed to initialize: {exc}"
+            ) from exc
         try:
             adapter.connect()
         except Exception as exc:
@@ -208,6 +222,53 @@ class VectorStoreRegistry:
                 )
             )
         return items
+
+    def _record_plugin_load(
+        self,
+        meta: dict[str, str | None],
+        *,
+        status: str,
+        warning: str | None = None,
+    ) -> None:
+        entry: dict[str, object] = dict(meta)
+        entry["status"] = status
+        if warning:
+            entry["warning"] = warning
+        self._plugin_loads.append(entry)
+
+    def _set_active_plugin(self, meta: dict[str, str | None]) -> None:
+        self._active_plugin = dict(meta)
+
+    def _clear_active_plugin(self) -> None:
+        self._active_plugin = None
+
+    def plugin_reports(self) -> list[dict[str, object]]:
+        reports: list[dict[str, object]] = []
+        for name, meta in self._plugin_sources.items():
+            descriptor, _factory, _availability, contract = self._entries[name]
+            reports.append(
+                {
+                    "name": name,
+                    "group": "bijux_vex.vectorstores",
+                    "source": meta.get("name"),
+                    "version": meta.get("version"),
+                    "entrypoint": meta.get("entrypoint"),
+                    "status": "loaded",
+                    "determinism": contract.determinism,
+                    "randomness_sources": list(contract.randomness_sources),
+                    "approximation": contract.approximation,
+                    "capabilities": {
+                        "supports_exact": descriptor.supports_exact,
+                        "supports_ann": descriptor.supports_ann,
+                        "delete_supported": descriptor.delete_supported,
+                        "filtering_supported": descriptor.filtering_supported,
+                    },
+                }
+            )
+        reports.extend(
+            [entry for entry in self._plugin_loads if entry.get("status") != "loaded"]
+        )
+        return reports
 
 
 VECTOR_STORES = VectorStoreRegistry()

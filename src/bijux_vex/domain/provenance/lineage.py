@@ -61,6 +61,7 @@ def explain_result(result: Result, stores: ExecutionResources) -> dict[str, obje
         "artifact": artifact,
         "metric": artifact.metric,
         "score": result.score,
+        "correlation_id": result.request_id,
         "execution_contract": artifact.execution_contract,
         "execution_contract_status": execution_contract_status,
         "replayable": artifact.replayable,

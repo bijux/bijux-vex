@@ -58,6 +58,9 @@ from bijux_vex.infra.embeddings.cache import (
     metadata_as_dict,
 )
 from bijux_vex.infra.embeddings.registry import EMBEDDING_PROVIDERS
+from bijux_vex.infra.logging import log_event
+from bijux_vex.infra.metrics import METRICS, timed
+from bijux_vex.infra.runners.registry import RUNNERS
 from bijux_vex.services.policies.id_policy import (
     ContentAddressedIdPolicy,
     IdGenerationStrategy,
@@ -101,6 +104,11 @@ class Orchestrator:
             vector_store_cfg.backend or "memory",
             uri=vector_store_cfg.uri,
             options=vector_store_cfg.options,
+        )
+        log_event(
+            "backend_selected",
+            backend=getattr(self.backend, "name", "unknown"),
+            vector_store=self.vector_store_resolution.descriptor.name,
         )
         self.stores = self.backend.stores
         if self.vector_store_enabled:
@@ -215,6 +223,11 @@ class Orchestrator:
             }
             for desc in VECTOR_STORES.descriptors()
         ]
+        plugins = {
+            "vectorstores": VECTOR_STORES.plugin_reports(),
+            "embeddings": EMBEDDING_PROVIDERS.plugin_reports(),
+            "runners": RUNNERS.plugin_reports(),
+        }
         if caps is None:
             return {
                 "backend": getattr(self.backend, "name", "unknown"),
@@ -229,6 +242,7 @@ class Orchestrator:
                 "ann_status": ann_status,
                 "storage_backends": storage_backends,
                 "vector_stores": vector_stores,
+                "plugins": plugins,
             }
         return {
             "backend": getattr(self.backend, "name", "unknown"),
@@ -246,6 +260,7 @@ class Orchestrator:
             "ann_status": ann_status,
             "storage_backends": storage_backends,
             "vector_stores": vector_stores,
+            "plugins": plugins,
         }
 
     def create(self, req: CreateRequest) -> dict[str, Any]:
@@ -254,6 +269,10 @@ class Orchestrator:
 
     def ingest(self, req: IngestRequest) -> dict[str, Any]:
         self._guard_mutation("ingest")
+        correlation_id = req.correlation_id or "req-1"
+        log_event(
+            "ingest_start", correlation_id=correlation_id, count=len(req.documents)
+        )
         vectors_input = list(req.vectors or [])
         vectors: list[list[float]] = []
         embedding_meta_by_index: dict[int, dict[str, str | None]] = {}
@@ -362,7 +381,7 @@ class Orchestrator:
                                 metadata=meta_dict,
                             ),
                         )
-        with self._tx() as tx:
+        with timed("ingest_latency_ms") as elapsed, self._tx() as tx:
             for idx, doc_text in enumerate(req.documents):
                 doc_id = self.id_policy.document_id(doc_text)
                 doc = Document(document_id=doc_id, text=doc_text)
@@ -390,6 +409,8 @@ class Orchestrator:
                 )
                 self.authz.check(tx, action="put_vector", resource="vector")
                 self.stores.vectors.put_vector(tx, vec)
+        METRICS.increment("vectors_indexed_total", value=len(req.documents))
+        log_event("ingest_end", correlation_id=correlation_id, elapsed_ms=elapsed())
         self._latest_corpus_fingerprint = corpus_fingerprint(req.documents)
         self._latest_vector_fingerprint = vectors_fingerprint(vectors)
         return {"ingested": len(req.documents)}
@@ -455,6 +476,7 @@ class Orchestrator:
         with self._tx() as tx:
             self.authz.check(tx, action="put_artifact", resource="artifact")
             self.stores.ledger.put_artifact(tx, artifact)
+        log_event("artifact_write", artifact_id=artifact.artifact_id)
         return {
             "artifact_id": artifact.artifact_id,
             "execution_contract": artifact.execution_contract.value,
@@ -469,6 +491,7 @@ class Orchestrator:
     def execute(self, req: ExecutionRequestPayload) -> dict[str, Any]:
         if req.vector is None:
             raise ValidationError(message="execution vector required")
+        correlation_id = req.correlation_id or "req-1"
         artifact_id = req.artifact_id
         if artifact_id is None:
             available = tuple(self.stores.ledger.list_artifacts())
@@ -508,7 +531,7 @@ class Orchestrator:
             else None
         )
         request = ExecutionRequest(
-            request_id="req-1",
+            request_id=correlation_id,
             text=req.request_text,
             vector=tuple(req.vector),
             top_k=req.top_k,
@@ -534,11 +557,14 @@ class Orchestrator:
             randomness=randomness_profile,
             ann_runner=getattr(self.backend, "ann", None),
         )
-        execution_result, results = execute_request(
-            session,
-            self.stores,
-            ann_runner=getattr(self.backend, "ann", None),
-        )
+        log_event("query_start", correlation_id=correlation_id, top_k=req.top_k)
+        with timed("query_latency_ms") as elapsed:
+            execution_result, results = execute_request(
+                session,
+                self.stores,
+                ann_runner=getattr(self.backend, "ann", None),
+            )
+        log_event("query_end", correlation_id=correlation_id, elapsed_ms=elapsed())
         with self._tx() as tx:
             self.stores.ledger.put_execution_result(tx, execution_result)
             updated_artifact = replace(
@@ -551,6 +577,7 @@ class Orchestrator:
             artifact = updated_artifact
         return {
             "results": [r.vector_id for r in results],
+            "correlation_id": correlation_id,
             "execution_contract": artifact.execution_contract.value,
             "execution_contract_status": (
                 "stable"
@@ -607,6 +634,7 @@ class Orchestrator:
             "artifact_id": artifact_meta.artifact_id,
             "metric": artifact_meta.metric,
             "score": target.score,
+            "correlation_id": target.request_id,
             "execution_contract": artifact_meta.execution_contract.value,
             "execution_contract_status": (
                 "stable"

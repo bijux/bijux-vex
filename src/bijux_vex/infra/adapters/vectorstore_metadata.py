@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from bijux_vex.core.types import Vector
+from bijux_vex.infra.adapters.metadata_migrations import CURRENT_VECTOR_METADATA_VERSION
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ def build_vectorstore_metadata(
 ) -> dict[str, Any]:
     embedding_meta = dict(vector.metadata or ())
     return {
+        "schema_version": CURRENT_VECTOR_METADATA_VERSION,
         "doc_id": document_id,
         "chunk_id": vector.chunk_id,
         "source_uri": source_uri,

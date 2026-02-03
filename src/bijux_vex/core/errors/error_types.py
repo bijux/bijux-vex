@@ -132,6 +132,18 @@ class AnnBudgetError(BudgetExceededError):
     """Raised when ANN execution exceeds configured budgets."""
 
 
+class PluginError(BijuxError):
+    """Base class for plugin-related failures."""
+
+
+class PluginLoadError(PluginError):
+    """Raised when a plugin fails to load or initialize."""
+
+
+class PluginTimeoutError(PluginError):
+    """Raised when a plugin call exceeds the allowed timeout."""
+
+
 def mark_retryable(error: BijuxError) -> BijuxError:
     """Return a copy of the error marked retryable without changing type."""
     return type(error)(message=str(error), retryable=True)
@@ -156,5 +168,8 @@ __all__ = [
     "AnnIndexBuildError",
     "AnnQueryError",
     "AnnBudgetError",
+    "PluginError",
+    "PluginLoadError",
+    "PluginTimeoutError",
     "mark_retryable",
 ]

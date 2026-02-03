@@ -25,6 +25,7 @@ class IngestRequest(StrictModel):
     embed_provider: str | None = None
     embed_model: str | None = None
     cache_embeddings: str | None = None
+    correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
     vector_store_options: dict[str, str] | None = None
@@ -62,6 +63,7 @@ class ExecutionRequestPayload(StrictModel):
     execution_mode: ExecutionMode = ExecutionMode.STRICT
     execution_budget: ExecutionBudgetPayload | None = None
     randomness_profile: RandomnessProfilePayload | None = None
+    correlation_id: str | None = None
     vector_store: str | None = None
     vector_store_uri: str | None = None
     vector_store_options: dict[str, str] | None = None
@@ -149,3 +151,4 @@ class BackendCapabilitiesReport(StrictModel):
     ann_status: str
     storage_backends: list[StorageBackendDescriptor]
     vector_stores: list[VectorStoreDescriptor]
+    plugins: dict[str, list[dict[str, object]]]
