@@ -133,6 +133,7 @@ class SQLiteVectorSource(VectorSource):
         self._conn = conn
         self._metric_cache: dict[str, str] = {}
         self._artifact_cache: dict[str, ExecutionArtifact] = {}
+        self._vector_cache: list[Vector] | None = None
 
     # Documents
     def put_document(self, tx: Tx, document: Document) -> None:
@@ -233,6 +234,7 @@ class SQLiteVectorSource(VectorSource):
                 json_dumps_meta(vector.metadata),
             ),
         )
+        self._vector_cache = None
 
     def get_vector(self, vector_id: str) -> Vector | None:
         row = self._conn.execute(
@@ -252,6 +254,8 @@ class SQLiteVectorSource(VectorSource):
         )
 
     def list_vectors(self, chunk_id: str | None = None) -> Iterable[Vector]:
+        if chunk_id is None and self._vector_cache is not None:
+            return list(self._vector_cache)
         if chunk_id:
             rows = self._conn.execute(
                 "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors WHERE chunk_id=? ORDER BY id",
@@ -261,7 +265,7 @@ class SQLiteVectorSource(VectorSource):
             rows = self._conn.execute(
                 "SELECT id, chunk_id, dim, vec_values, model, metadata FROM vectors ORDER BY id"
             ).fetchall()
-        return [
+        vectors = [
             Vector(
                 vector_id=r[0],
                 chunk_id=r[1],
@@ -272,6 +276,9 @@ class SQLiteVectorSource(VectorSource):
             )
             for r in rows
         ]
+        if chunk_id is None:
+            self._vector_cache = list(vectors)
+        return vectors
 
     def query(self, artifact_id: str, request: ExecutionRequest) -> Iterable[Result]:
         # Basic deterministic L2 similar to memory
@@ -282,25 +289,25 @@ class SQLiteVectorSource(VectorSource):
             raise InvariantError(
                 message="Execution contract does not match artifact execution contract"
             )
-        vectors = self.list_vectors()
+        rows = self._conn.execute(
+            "SELECT v.id, v.chunk_id, v.dim, v.vec_values, c.document_id "
+            "FROM vectors v LEFT JOIN chunks c ON v.chunk_id = c.id ORDER BY v.id"
+        ).fetchall()
         scored: list[Result] = []
-        for vec in vectors:
-            if len(request.vector) != vec.dimension:
+        req_vec = request.vector
+        for row in rows:
+            vec_dim = row[2]
+            if len(req_vec) != vec_dim:
                 continue
-            score = sum(
-                (q - v) * (q - v)
-                for q, v in zip(request.vector, vec.values, strict=True)
-            )
-            chunk_row = self._conn.execute(
-                "SELECT document_id FROM chunks WHERE id=?", (vec.chunk_id,)
-            ).fetchone()
-            doc_id = chunk_row[0] if chunk_row else ""
+            values = tuple(json_loads(row[3]))
+            score = sum((q - v) * (q - v) for q, v in zip(req_vec, values, strict=True))
+            doc_id = row[4] or ""
             scored.append(
                 Result(
                     request_id=request.request_id,
                     document_id=doc_id,
-                    chunk_id=vec.chunk_id,
-                    vector_id=vec.vector_id,
+                    chunk_id=row[1],
+                    vector_id=row[0],
                     artifact_id=artifact_id,
                     score=score,
                     rank=0,
@@ -321,6 +328,7 @@ class SQLiteVectorSource(VectorSource):
 
     def delete_vector(self, tx: Tx, vector_id: str) -> None:
         self._conn.execute("DELETE FROM vectors WHERE id=?", (vector_id,))
+        self._vector_cache = None
 
 
 class SQLiteExecutionLedger(ExecutionLedger):
