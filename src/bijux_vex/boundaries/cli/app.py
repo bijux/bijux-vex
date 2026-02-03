@@ -380,6 +380,45 @@ def capabilities(ctx: typer.Context) -> None:
 
 @app.command()
 @no_type_check
+def audit(
+    ctx: typer.Context,
+    vector_store: str | None = typer.Option(None, "--vector-store"),
+    vector_store_uri: str | None = typer.Option(None, "--vector-store-uri"),
+) -> None:
+    base_config = _load_config(ctx.obj.config_path) if ctx.obj else None
+    config = _build_config(
+        vector_store=vector_store,
+        vector_store_uri=vector_store_uri,
+        base_config=base_config,
+    )
+    engine = VectorExecutionEngine(config=config)
+    caps = engine.capabilities()
+    nd_caps = caps.get("ann", {})
+    payload = {
+        "determinism_guarantees": {
+            "exact": "bit-identical when deterministic contract is used",
+            "enforced": True,
+        },
+        "nd_guarantees": {
+            "runner": nd_caps.get("default_runner"),
+            "supports_seed": nd_caps.get("supports_seed"),
+            "quality_metrics_required": True,
+            "replay_strict": True,
+        },
+        "backend_trust": {
+            "vector_store": caps.get("vector_store", {}).get("selected"),
+            "backend": caps.get("execution", {}).get("backend"),
+        },
+        "known_limitations": (
+            "ND quality is bounded by ANN candidate quality",
+            "Benchmarks require explicit baselines on target hardware",
+        ),
+    }
+    _emit(ctx, payload)
+
+
+@app.command()
+@no_type_check
 def ingest(
     ctx: typer.Context,
     doc: str = typer.Option(..., "--doc"),
