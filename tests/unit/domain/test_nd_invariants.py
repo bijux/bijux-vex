@@ -10,10 +10,14 @@ from bijux_vex.core.types import (
     Chunk,
     Document,
     ExecutionArtifact,
+    ExecutionBudget,
     ExecutionRequest,
     Vector,
 )
-from bijux_vex.domain.execution_requests.execute import execute_request, start_execution_session
+from bijux_vex.domain.execution_requests.execute import (
+    execute_request,
+    start_execution_session,
+)
 from bijux_vex.infra.adapters.ann_reference import ReferenceAnnRunner
 from bijux_vex.infra.adapters.memory.backend import memory_backend
 
@@ -47,6 +51,7 @@ def test_nd_result_emits_quality_or_reason():
         execution_contract=ExecutionContract.NON_DETERMINISTIC,
         execution_intent=ExecutionIntent.EXPLORATORY_SEARCH,
         execution_mode=ExecutionMode.BOUNDED,
+        execution_budget=ExecutionBudget(),
     )
     session = start_execution_session(
         artifact,

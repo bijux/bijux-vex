@@ -43,7 +43,9 @@ def test_nd_circuit_breaker_refuses_after_failures():
     backend = memory_backend()
     with backend.tx_factory() as tx:
         doc = Document(document_id="d", text="hello")
-        chunk = Chunk(chunk_id="c", document_id=doc.document_id, text="hello", ordinal=0)
+        chunk = Chunk(
+            chunk_id="c", document_id=doc.document_id, text="hello", ordinal=0
+        )
         vec = Vector(vector_id="v", chunk_id=chunk.chunk_id, values=(0.0,), dimension=1)
         art = ExecutionArtifact(
             artifact_id="art",

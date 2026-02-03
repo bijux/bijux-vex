@@ -23,6 +23,7 @@ CLI_HELP = """
 │ list-runs                                                                    │
 │ init                                                                         │
 │ capabilities                                                                 │
+│ audit                                                                        │
 │ ingest                                                                       │
 │ validate                                                                     │
 │ doctor                                                                       │

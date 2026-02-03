@@ -8,7 +8,11 @@ from dataclasses import dataclass, replace
 from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import BijuxError
-from bijux_vex.core.execution_result import ExecutionResult, NDDecisionTrace, WitnessReport
+from bijux_vex.core.execution_result import (
+    ExecutionResult,
+    NDDecisionTrace,
+    WitnessReport,
+)
 from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest, Result
 from bijux_vex.domain.execution_requests.budget import (
@@ -49,7 +53,7 @@ def execute_request(
     session: ExecutionSession,
     resources: ExecutionResources,
     ann_runner: AnnExecutionRequestRunner | None = None,
-    decision_trace: "NDDecisionTrace | None" = None,
+    decision_trace: NDDecisionTrace | None = None,
 ) -> tuple[ExecutionResult, Iterable[Result]]:
     require_randomness(session, ann_runner)
     results_buffer, status, failure_reason, approximation = collect_results(

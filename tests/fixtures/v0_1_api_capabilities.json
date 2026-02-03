@@ -16,6 +16,18 @@
   "metrics": [
     "l2"
   ],
+  "nd": {
+    "default_runner": "reference",
+    "health": {
+      "cooldown_s": 30,
+      "failures": 0,
+      "open_until": 0.0,
+      "status": "closed"
+    },
+    "notes": [
+      "hnswlib not installed; using reference ANN runner"
+    ]
+  },
   "plugins": {
     "embeddings": [
       {
@@ -23,7 +35,7 @@
         "group": "bijux_vex.embeddings",
         "name": "bijux-vex",
         "status": "failed",
-        "version": "0.1.1.dev62+dirty",
+        "version": "0.1.1.dev78+dirty",
         "warning": "partially initialized module 'bijux_vex.plugins.example' has no attribute 'register_embedding' (most likely due to a circular import)"
       }
     ],
@@ -37,7 +49,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev62+dirty"
+        "version": "0.1.1.dev78+dirty"
       }
     ],
     "vectorstores": [
@@ -56,7 +68,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev62+dirty"
+        "version": "0.1.1.dev78+dirty"
       }
     ]
   },
@@ -103,17 +115,17 @@
       "version": null
     },
     {
-      "available": true,
+      "available": false,
       "consistency": "read_after_write",
       "delete_supported": true,
       "deterministic_exact": true,
       "experimental": true,
       "filtering_supported": false,
       "name": "faiss",
-      "notes": null,
+      "notes": "faiss-cpu not installed",
       "supports_ann": true,
       "supports_exact": true,
-      "version": "1.13.2"
+      "version": null
     },
     {
       "available": true,
@@ -129,14 +141,14 @@
       "version": null
     },
     {
-      "available": true,
+      "available": false,
       "consistency": "eventual",
       "delete_supported": true,
       "deterministic_exact": false,
       "experimental": true,
       "filtering_supported": true,
       "name": "qdrant",
-      "notes": null,
+      "notes": "qdrant-client not installed",
       "supports_ann": true,
       "supports_exact": true,
       "version": null

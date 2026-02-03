@@ -11,12 +11,12 @@ from bijux_vex.core.contracts.execution_abi import (
 
 
 EXPECTED_ABI_FINGERPRINT = (
-    "4197d3a7dfd150cffa51d33fdaaafcbc4cf405f9bb1d18f04b7f8658a34294fc"
+    "02c5e96fdd875cd6732ed26c0c0eb99dd186e70e3c0e6fd1535339bad3d939c6"
 )
 
 
 def test_execution_abi_is_frozen():
-    assert EXECUTION_ABI_VERSION == "1.3.18"
+    assert EXECUTION_ABI_VERSION == "1.3.21"
     assert execution_abi_fingerprint() == EXPECTED_ABI_FINGERPRINT
     payload = execution_abi_payload()
     assert "execution_request_fields" in payload

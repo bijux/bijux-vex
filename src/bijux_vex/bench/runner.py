@@ -11,8 +11,6 @@ import time
 from typing import TYPE_CHECKING, Any, cast
 import uuid
 
-import numpy as np
-
 if TYPE_CHECKING:  # pragma: no cover
     import numpy as np
 
@@ -152,6 +150,8 @@ def _execute_queries(
 def _exact_top_k(
     vectors: np.ndarray, vector_ids: list[str], query: np.ndarray, top_k: int
 ) -> list[str]:
+    import numpy as np
+
     if len(vector_ids) == 0 or top_k <= 0:
         return []
     diffs = vectors - query
@@ -174,6 +174,7 @@ def run_benchmark(
     repeats: int,
     warmup: int,
 ) -> dict[str, Any]:
+
     if mode not in {"exact", "ann"}:
         raise ValueError("mode must be exact or ann")
 
@@ -260,9 +261,7 @@ def run_benchmark(
             "execution_contract": contract.value,
             "execution_mode": execution_mode.value,
             "backend": store_backend or "memory",
-            "reproducibility_bounds": "bit-identical"
-            if mode == "exact"
-            else "bounded",
+            "reproducibility_bounds": "bit-identical" if mode == "exact" else "bounded",
             "determinism_fingerprint": determinism_fingerprint(
                 "bench_vectors",
                 "bench_index",

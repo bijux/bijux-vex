@@ -73,6 +73,8 @@ def test_validator_accepts_minimal_nd():
         execution_contract=ExecutionContract.NON_DETERMINISTIC,
         execution_mode=ExecutionMode.BOUNDED,
         execution_budget=SimpleNamespace(max_latency_ms=1),
-        randomness_profile=SimpleNamespace(seed=1, sources=("seed",), non_replayable=False),
+        randomness_profile=SimpleNamespace(
+            seed=1, sources=("seed",), non_replayable=False
+        ),
     )
     validate_execution_request_payload(payload)

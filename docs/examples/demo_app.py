@@ -13,6 +13,12 @@ from bijux_vex.boundaries.api.app import app
 
 
 def main() -> None:
+    try:
+        import faiss  # noqa: F401
+    except Exception:
+        print("faiss not installed; skipping demo_app")
+        return
+
     with tempfile.TemporaryDirectory() as workdir:
         workdir_path = Path(workdir)
         os.environ["BIJUX_VEX_STATE_PATH"] = str(workdir_path / "session.sqlite")

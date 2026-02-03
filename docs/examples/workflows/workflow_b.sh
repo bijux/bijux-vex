@@ -16,6 +16,17 @@ fi
 
 BIN="${PYTHON_BIN} -m bijux_vex.boundaries.cli.app"
 
+if ! $PYTHON_BIN - <<'PY'; then
+import sys
+try:
+    import faiss  # noqa: F401
+except Exception:
+    print("faiss not installed; skipping workflow_b")
+    sys.exit(1)
+PY
+  exit 0
+fi
+
 $BIN init --config-path "$WORKDIR/bijux_vex.toml" --force
 $BIN ingest --doc "hello embeddings" \
   --embed-provider example --embed-model example \

@@ -17,6 +17,7 @@ from bijux_vex.contracts.resources import VectorSource
 from bijux_vex.core.errors import (
     AnnIndexBuildError,
     BudgetExceededError,
+    CorruptArtifactError,
     ValidationError,
 )
 from bijux_vex.core.execution_result import ApproximationReport

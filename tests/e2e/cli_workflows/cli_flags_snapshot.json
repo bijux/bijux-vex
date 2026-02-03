@@ -55,6 +55,29 @@
     ]
   },
   {
+    "command": "audit",
+    "params": [
+      {
+        "default": null,
+        "name": "vector_store",
+        "opts": [
+          "--vector-store"
+        ],
+        "param_type": "option",
+        "required": false
+      },
+      {
+        "default": null,
+        "name": "vector_store_uri",
+        "opts": [
+          "--vector-store-uri"
+        ],
+        "param_type": "option",
+        "required": false
+      }
+    ]
+  },
+  {
     "command": "bench",
     "params": [
       {

@@ -87,7 +87,7 @@ class ExecutionResult:
     results: tuple[Result, ...]
     cost: ExecutionCost
     approximation: ApproximationReport | None = None
-    nd_result: "NDResultSchema | None" = None
+    nd_result: NDResultSchema | None = None
     status: ExecutionStatus = ExecutionStatus.SUCCESS
     failure_reason: str | None = None
     randomness_sources: tuple[str, ...] = ()

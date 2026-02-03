@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from bijux_vex.core.errors import InvariantError
 from bijux_vex.core.identity.ids import fingerprint
@@ -12,7 +12,7 @@ from bijux_vex.core.runtime.vector_execution import RandomnessProfile, VectorExe
 from bijux_vex.core.types import ExecutionArtifact, ExecutionRequest
 
 
-class ExecutionState(str, Enum):
+class ExecutionState(StrEnum):
     CREATED = "created"
     PLANNED = "planned"
     RUNNING = "running"

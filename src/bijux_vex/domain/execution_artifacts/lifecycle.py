@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from enum import Enum
+from enum import StrEnum
 
 from bijux_vex.core.errors import InvariantError
 from bijux_vex.core.types import ExecutionArtifact
 
 
-class IndexState(str, Enum):
+class IndexState(StrEnum):
     UNBUILT = "unbuilt"
     BUILDING = "building"
     READY = "ready"

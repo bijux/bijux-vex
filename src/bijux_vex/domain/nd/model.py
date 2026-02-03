@@ -2,24 +2,32 @@
 # Copyright © 2026 Bijan Mousavi
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Any
 
+from bijux_vex.contracts.resources import ExecutionResources
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
     AnnIndexBuildError,
-    BackendUnavailableError,
     InvariantError,
     NDExecutionUnavailableError,
 )
-from bijux_vex.core.execution_result import NDDecisionTrace
-from bijux_vex.core.identity.ids import fingerprint
-from bijux_vex.core.runtime.vector_execution import RandomnessProfile
 from bijux_vex.core.execution_mode import ExecutionMode
-from bijux_vex.core.types import ExecutionArtifact, ExecutionBudget, ExecutionRequest, NDSettings
-from bijux_vex.domain.execution_requests.execute import execute_request, start_execution_session
+from bijux_vex.core.execution_result import NDDecisionTrace
+from bijux_vex.core.runtime.vector_execution import RandomnessProfile
+from bijux_vex.core.types import (
+    ExecutionArtifact,
+    ExecutionBudget,
+    ExecutionRequest,
+    NDSettings,
+)
+from bijux_vex.domain.execution_requests.execute import (
+    execute_request,
+    start_execution_session,
+)
 from bijux_vex.domain.execution_requests.plan import build_execution_plan
 from bijux_vex.domain.nd.randomness import require_randomness_for_nd
 from bijux_vex.infra.adapters.ann_base import AnnExecutionRequestRunner
@@ -41,13 +49,15 @@ class NDExecutionModel:
     def __init__(
         self,
         *,
-        stores: object,
+        stores: ExecutionResources,
         ann_runner: AnnExecutionRequestRunner | None,
         latest_vector_fingerprint: str | None = None,
+        tx_factory: Callable[[], Any] | None = None,
     ) -> None:
         self._stores = stores
         self._ann_runner = ann_runner
         self._latest_vector_fingerprint = latest_vector_fingerprint
+        self._tx_factory = tx_factory
 
     def build_settings(self, req: object) -> NDSettings | None:
         nd_settings = NDSettings(
@@ -99,24 +109,35 @@ class NDExecutionModel:
             "nd_incremental_index",
             "nd_max_candidates",
             "nd_max_index_memory_mb",
-            "nd_two_stage",
             "nd_m",
             "nd_ef_construction",
             "nd_ef_search",
             "nd_max_ef_search",
             "nd_space",
         )
-        if any(getattr(req, field, None) not in (None, False) for field in nd_fields):
+        has_nd_fields = any(
+            getattr(req, field, None) not in (None, False) for field in nd_fields
+        )
+        if getattr(req, "nd_two_stage", True) is False:
+            has_nd_fields = True
+        if has_nd_fields:
             return nd_settings
         return None
 
     def plan(
-        self, artifact: ExecutionArtifact, request: ExecutionRequest
+        self,
+        artifact: ExecutionArtifact,
+        request: ExecutionRequest,
+        randomness: RandomnessProfile | None,
     ) -> NDPlan:
         if artifact.execution_contract is not ExecutionContract.NON_DETERMINISTIC:
-            raise InvariantError(message="ND execution requires non_deterministic artifact")
+            raise InvariantError(
+                message="ND execution requires non_deterministic artifact"
+            )
         if request.execution_contract is not ExecutionContract.NON_DETERMINISTIC:
-            raise InvariantError(message="ND execution requires non_deterministic request")
+            raise InvariantError(
+                message="ND execution requires non_deterministic request"
+            )
         if request.execution_mode is ExecutionMode.STRICT:
             raise InvariantError(message="ND execution cannot run in strict mode")
         if self._ann_runner is None:
@@ -124,7 +145,11 @@ class NDExecutionModel:
                 message="ANN runner required for non_deterministic execution"
             )
         plan, execution = build_execution_plan(
-            artifact, request, self._stores, ann_runner=self._ann_runner
+            artifact,
+            request,
+            self._stores,
+            randomness=randomness,
+            ann_runner=self._ann_runner,
         )
         params = {
             "top_k": request.top_k,
@@ -157,7 +182,11 @@ class NDExecutionModel:
             index_info = ann_runner.index_info(artifact.artifact_id)
         needs_build = artifact.index_state != "ready" or not index_info
         if needs_build:
-            if nd_settings is not None and nd_settings.incremental_index is False and not build_on_demand:
+            if (
+                nd_settings is not None
+                and nd_settings.incremental_index is False
+                and not build_on_demand
+            ):
                 raise AnnIndexBuildError(
                     message="ANN index invalidated; rebuild required (incremental_index=false)"
                 )
@@ -180,7 +209,9 @@ class NDExecutionModel:
                 build_params=artifact.build_params + extra,
                 index_state="ready",
             )
-            with self._stores.tx_factory() as tx:
+            if self._tx_factory is None:
+                raise InvariantError(message="ND model missing tx_factory")
+            with self._tx_factory() as tx:
                 self._stores.ledger.put_artifact(tx, artifact)
         return artifact
 
@@ -200,18 +231,33 @@ class NDExecutionModel:
         current_hash = ann_info.get("index_hash") if ann_info else None
         if stored_hash and current_hash and stored_hash != str(current_hash):
             raise AnnIndexBuildError(message="ANN index drift detected (hash mismatch)")
-        if self._latest_vector_fingerprint and self._latest_vector_fingerprint != artifact.vector_fingerprint:
+        if (
+            self._latest_vector_fingerprint
+            and self._latest_vector_fingerprint != artifact.vector_fingerprint
+        ):
             raise AnnIndexBuildError(
                 message="ANN index drift detected (vector fingerprint mismatch)"
             )
         if ann_info and "vector_count" in ann_info:
             current_count = sum(1 for _ in self._stores.vectors.list_vectors())
-            if int(ann_info["vector_count"]) != int(current_count):
+            count_value = ann_info.get("vector_count")
+            if isinstance(count_value, bool):
+                count = 0
+            elif isinstance(count_value, (int, float, str)):
+                try:
+                    count = int(count_value)
+                except ValueError:
+                    count = 0
+            else:
+                count = 0
+            if count != int(current_count):
                 raise AnnIndexBuildError(
                     message="ANN index drift detected (vector count mismatch)"
                 )
 
-    def warmup(self, artifact: ExecutionArtifact, nd_settings: NDSettings | None) -> None:
+    def warmup(
+        self, artifact: ExecutionArtifact, nd_settings: NDSettings | None
+    ) -> None:
         if nd_settings is None or nd_settings.warmup_queries is None:
             return
         ann_runner = self._ann_runner
@@ -237,11 +283,11 @@ class NDExecutionModel:
         request: ExecutionRequest,
         randomness: RandomnessProfile | None,
         build_on_demand: bool,
-    ):
+    ) -> tuple[Any, Iterable[Any]]:
         session = self._stage_plan(
             artifact, request, randomness, build_on_demand=build_on_demand
         )
-        plan = self.plan(artifact, request)
+        plan = self.plan(artifact, request, randomness)
         decision_trace = NDDecisionTrace(
             runner=type(plan.runner).__name__,
             params=tuple(sorted(plan.params.items())),
@@ -262,7 +308,7 @@ class NDExecutionModel:
         randomness: RandomnessProfile | None,
         *,
         build_on_demand: bool,
-    ):
+    ) -> Any:
         session = start_execution_session(
             artifact, request, self._stores, randomness, self._ann_runner
         )
@@ -272,17 +318,24 @@ class NDExecutionModel:
         self.warmup(artifact, request.nd_settings)
         return session
 
-    def _stage_execute(self, session, decision_trace: NDDecisionTrace):
+    def _stage_execute(
+        self, session: Any, decision_trace: NDDecisionTrace
+    ) -> tuple[Any, Iterable[Any]]:
         return execute_request(
-            session, self._stores, ann_runner=self._ann_runner, decision_trace=decision_trace
+            session,
+            self._stores,
+            ann_runner=self._ann_runner,
+            decision_trace=decision_trace,
         )
 
-    def _stage_verify(self, execution_outcome):
+    def _stage_verify(
+        self, execution_outcome: tuple[Any, Iterable[Any]]
+    ) -> tuple[Any, Iterable[Any]]:
         return execution_outcome
 
     def _stage_postprocess(
-        self, execution_result, decision_trace: NDDecisionTrace
-    ):
+        self, execution_result: Any, decision_trace: NDDecisionTrace
+    ) -> Any:
         if execution_result.nd_result is None:
             return execution_result
         return replace(
@@ -295,7 +348,7 @@ class NDExecutionModel:
     def decision_trace_from_request(
         self, request: ExecutionRequest, refusal: str | None = None
     ) -> NDDecisionTrace:
-        params = {"top_k": request.top_k}
+        params: dict[str, object] = {"top_k": request.top_k}
         if request.nd_settings:
             params.update(
                 {

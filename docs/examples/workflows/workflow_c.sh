@@ -18,6 +18,17 @@ fi
 
 BIN="${PYTHON_BIN} -m bijux_vex.boundaries.cli.app"
 
+if ! $PYTHON_BIN - <<'PY'; then
+import sys
+try:
+    import faiss  # noqa: F401
+except Exception:
+    print("faiss not installed; skipping workflow_c")
+    sys.exit(1)
+PY
+  exit 0
+fi
+
 $BIN init --config-path "$WORKDIR/bijux_vex.toml" --force
 $BIN ingest --doc "hello ann" --vector "[0.0, 1.0, 0.0]" \
   --vector-store faiss --vector-store-uri "$WORKDIR/index.faiss"

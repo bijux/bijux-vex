@@ -23,7 +23,6 @@ from bijux_vex.contracts.tx import Tx
 from bijux_vex.core.config import ExecutionConfig, VectorStoreConfig
 from bijux_vex.core.contracts.execution_contract import ExecutionContract
 from bijux_vex.core.errors import (
-    AnnIndexBuildError,
     AuthzDeniedError,
     BackendUnavailableError,
     BudgetExceededError,
@@ -925,6 +924,7 @@ class Orchestrator:
             stores=self.stores,
             ann_runner=getattr(self.backend, "ann", None),
             latest_vector_fingerprint=self._latest_vector_fingerprint,
+            tx_factory=self._tx,
         )
         nd_settings = nd_model.build_settings(req)
         request = self._build_execution_request(req, correlation_id, nd_settings)
@@ -985,16 +985,19 @@ class Orchestrator:
             )
             self.stores.ledger.put_artifact(tx, updated_artifact)
             artifact = updated_artifact
+        nd_trace = None
+        if execution_result.nd_result is not None:
+            trace = execution_result.nd_result.decision_trace
+            if trace is not None:
+                from dataclasses import asdict
+
+                nd_trace = asdict(trace)
         self._run_store.finalize(
             run_id,
             {
                 "execution_result": execution_result.to_primitive(),
                 "results": [r.vector_id for r in results],
-                "nd_decision_trace": (
-                    execution_result.nd_result.decision_trace
-                    if execution_result.nd_result is not None
-                    else None
-                ),
+                "nd_decision_trace": nd_trace,
             },
         )
         return {

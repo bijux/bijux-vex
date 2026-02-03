@@ -33,9 +33,10 @@ def invariant_randomness_required(request: ExecutionRequest) -> Invariant:
     return Invariant(
         invariant_id="INV-020",
         description="Non-deterministic execution requires declared randomness",
-        predicate=lambda: request.execution_contract
-        is not ExecutionContract.NON_DETERMINISTIC
-        or request.execution_budget is not None,
+        predicate=lambda: (
+            request.execution_contract is not ExecutionContract.NON_DETERMINISTIC
+            or request.execution_budget is not None
+        ),
     )
 
 
