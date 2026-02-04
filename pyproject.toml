@@ -1,13 +1,17 @@
 [build-system]
-requires = ["hatchling>=1.24.2", "hatch-vcs>=0.4"]
+requires = [
+  "hatchling>=1.27.0,<1.28",
+  "hatch-fancy-pypi-readme>=24.2,<26.0",
+  "hatch-vcs>=0.4.0,<1.0",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "bijux-vex"
 description = "Vector execution runtime with replayable determinism and audited ANN (nothing implicit)."
-readme = "PYPI.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11,<4"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [{ name = "Bijan Mousavi", email = "mousavi.bijan@gmail.com" }]
 maintainers = [{ name = "Bijan Mousavi", email = "mousavi.bijan@gmail.com" }]
 keywords = [
@@ -131,13 +135,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://bijux.github.io/bijux-vex/"
-Documentation = "https://bijux.github.io/bijux-vex/"
-Source = "https://github.com/bijux/bijux-vex"
-Issues = "https://github.com/bijux/bijux-vex/issues"
-Changelog = "https://github.com/bijux/bijux-vex/blob/main/CHANGELOG.md"
-Security = "https://github.com/bijux/bijux-vex/blob/main/SECURITY.md"
-Funding = "https://github.com/sponsors/bijux"
+"Homepage" = "https://github.com/bijux/bijux-vex"
+"Repository" = "https://github.com/bijux/bijux-vex.git"
+"Bug Tracker" = "https://github.com/bijux/bijux-vex/issues"
+"Documentation" = "https://bijux.github.io/bijux-vex/"
+"Changelog" = "https://bijux.github.io/bijux-vex/changelog"
+"Discussions" = "https://github.com/bijux/bijux-vex/discussions"
+"Security" = "https://github.com/bijux/bijux-vex/blob/main/SECURITY.md"
+"Funding" = "https://github.com/sponsors/bijux"
 
 [project.entry-points."bijux_vex.vectorstores"]
 example = "bijux_vex.plugins.example:register_vectorstore"
@@ -161,6 +166,25 @@ include = ["src/bijux_vex/py.typed"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/bijux_vex/py.typed"]
+
+[tool.hatch.build]
+include = [
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  "LICENSES/**",
+  "REUSE.toml",
+  "CITATION.cff",
+  "PYPI.md",
+  "src/bijux_vex/py.typed",
+]
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+fragments = [
+  { path = "README.md" },
+  { path = "CHANGELOG.md" },
+]
 
 [tool.towncrier]
 package = "bijux_vex"
