@@ -35,7 +35,7 @@
         "group": "bijux_vex.embeddings",
         "name": "bijux-vex",
         "status": "failed",
-        "version": "0.1.1.dev78+dirty",
+        "version": "0.1.1.dev95",
         "warning": "partially initialized module 'bijux_vex.plugins.example' has no attribute 'register_embedding' (most likely due to a circular import)"
       }
     ],
@@ -49,7 +49,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev78+dirty"
+        "version": "0.1.1.dev95"
       }
     ],
     "vectorstores": [
@@ -68,7 +68,7 @@
         "randomness_sources": [],
         "source": "bijux-vex",
         "status": "loaded",
-        "version": "0.1.1.dev78+dirty"
+        "version": "0.1.1.dev95"
       }
     ]
   },
