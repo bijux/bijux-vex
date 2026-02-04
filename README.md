@@ -31,6 +31,7 @@ python -m bijux_vex.boundaries.cli.app execute --vector "[0,1,0]" \
 
 - Start here (10 minutes): https://bijux.github.io/bijux-vex/user/start_here_10_minutes/
 - Start here (human): https://bijux.github.io/bijux-vex/user/start_here_human/
+- Start here (canonical doc): `docs/user/start_here.md`
 - Why Bijux‑Vex exists: https://bijux.github.io/bijux-vex/user/why_bijux_vex_exists/
 - Docs home: https://bijux.github.io/bijux-vex/
 
