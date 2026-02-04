@@ -2,9 +2,9 @@
 # Copyright © 2026 Bijan Mousavi
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
+np = pytest.importorskip("numpy")
 pytest.importorskip("faiss")
 
 from bijux_vex.infra.adapters.faiss.adapter import FaissVectorStoreAdapter

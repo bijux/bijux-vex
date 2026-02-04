@@ -2,6 +2,10 @@
 # Copyright © 2026 Bijan Mousavi
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("numpy")
+
 from bijux_vex.bench.dataset import generate_dataset
 
 
