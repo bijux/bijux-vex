@@ -2,290 +2,634 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://bijux.github.io/bijux-vex/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/changelog/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/api/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/api/cli_exit_codes/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/api/errors/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/api/examples/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/api/openapi/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/architecture/v0.2_narrative/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/contracts/backward_compatibility/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/contracts/error_style/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/contracts/implicitness/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/contracts/nd_contract_v1/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/contracts/query_contract/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/contracts/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/determinism/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/execution_contracts/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/glossary/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/non_goals/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/rejected_alternatives/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/scope/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/vdb_comparison/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/design/vector_store_opt_in/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/design/why_vector_execution/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/examples/audit_narrative/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/examples/canonical/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/examples/contract_violation/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/examples/nd_reproducibility/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/examples/overview/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/guides/nd_production/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/legal/licensing/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/ann_runner_audit/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/benchmark_truth_table/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/benchmarks/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/compatibility_breaks/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/contributor_architecture_invariants/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/debt_log/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/deletion_policy/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/design_diary/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/do_not_optimize/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/docs_freeze_checklist/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/extension_points/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/extension_policy/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/freeze_criteria/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/if_i_disappear/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/maintenance_mode_criteria/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/makefile_contract/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/pre_release_self_audit/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/release_checklist/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/release_dry_run/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/release_process/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/security_model/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/testing_policy/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/maintainer/v0_2_0_progress_checklist/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/why_this_is_hard/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/rationale/anti_goals/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/maintainer/rationale/philosophy/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/overview/architecture_overview/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/overview/architecture_walkthrough/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/overview/concepts/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/ann_graduation_criteria/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/architecture_diagram/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/determinism_matrix/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/doc_to_code_map/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/embeddings_contract/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/execution_artifacts/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/execution_contracts/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/execution_intent_matrix/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/execution_lifecycle/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/failure_semantics/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/identity/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/invariant_ids/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/invariants_overview/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/irreducible_core/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/mental_model/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/nd_profiles/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/non_deterministic_execution/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/provenance_schema/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/read_this_first/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/refusals/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/system_contract/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/vdb_profile/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/spec/vectorstore_adapter/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/vocabulary/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/ann_execution/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/deterministic_replay/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/exact_execution/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/forcing_case/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/nd_execution_with_audit/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/examples/ugly_truth/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/spec/failure_narratives/budget_exhaustion/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/anti_goals/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/before_production_checklist/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/byo_vectors_vs_embeddings/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/choose_execution_mode/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/common_mistakes/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/concept_map/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_analogies/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_end_to_end/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_failure_story/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_guarantees_table/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_guide/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_refusals/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/determinism_stop_caring/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/deterministic_replay/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/embedding_lifecycle/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/execution_mode_comparison/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/experimental_stable_markers/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/user/external_misuse/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/failure_modes_safety/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/freeze_meanings/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/glossary/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/how_to_think_with_bijux_vex/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/known_limitations/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/user/misuse/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/naming_explained/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_decision_tree/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_examples/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_execution_model/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_failure_story/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_metrics_intuition/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_parameters/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_promises/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_quality_confidence/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_reproducibility/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_terminology/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_troubleshooting/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_trust_checklist/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/nd_use_cases/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/user/not_a_vdb/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/only_read_one_page/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/operator_guide/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/plugin_author_guide/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/project_values/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/provenance_audit/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/reading_order/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/release_notes_narrative/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/safety_philosophy/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/security_guide/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/security_posture/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/stability_evolution_policy/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/stability_support_policy/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://bijux.github.io/bijux-vex/user/start_here/</loc>
-         <lastmod>2026-01-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/start_here_10_minutes/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/start_here_human/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/troubleshooting/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/trust_and_guarantees/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/trust_model/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/tutorial/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/v0_2_user_contract/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/vector_store_semantics/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/what_happens_when_things_go_wrong/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/what_is_bijux_vex/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/who_should_use/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/why_bijux_vex_exists/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/workflows/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/vectorstores/faiss/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/vectorstores/memory/</loc>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://bijux.github.io/bijux-vex/user/vectorstores/qdrant/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
 </urlset>
